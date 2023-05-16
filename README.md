@@ -3,7 +3,19 @@ Analysis workflow for all data present in our PDAC Atlas Manuscript titled, "Tra
 
 ## Atlas Workflow
 Scripts for the creation of the atlas, and its downstream analyses can be found under the /Atlas Directory.
-
+* PDAC atlas engineering_051622_BK.Rmd:
+  1. Counts from all manuscripts
+* PDAC atlas analysis_051622_BK.Rmd:
+  1. cds_combined_8_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph.rds
+* PDAC_MHCII_DifferentialExprs.Rmd:
+  1. cds_duct_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph.rds
+* PDAC_CAF_MHCII_DifferentialExprs.Rmd:
+  1. cds_combined_8_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph.rds
+* 06222022_STEELE_PYSCENIC_HG38only.sh & Domino_PDAC_EpCAF_STEELE_HG38only.Rmd: 
+  1. cds_combined_8_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph
+* 06222022_PENG_PYSCENIC_HG38only.sh & Domino_PDAC_EpCAF_PENG_HG38only.Rmd: 
+  1. cds_combined_8_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph
+  
 ## Mutliseq Workflow
 Scripts for the analysis of the 12HR PDO-CAF Coculture scRNA-seq data can be found under the /Multiseq Directory.
 

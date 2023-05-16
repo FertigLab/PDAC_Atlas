@@ -1,0 +1,90 @@
+---
+title: "PDAC_MHCII_DifferentialExprs"
+author: "Joe"
+date: "4/21/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Load Packages
+```{r}
+library(monocle3)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(grid)
+```
+
+##Done on JHPCE due to memory size required
+
+##Load CDS from Ben
+```{r}
+PDAC_cds <- readRDS("cds_duct_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph.rds")
+```
+
+##Perform DE -- may need to be done in cluster
+```{r}
+##List of MHCII genes
+MHCII_genes <- c("HLA-DMA","HLA-DMB","HLA-DOA","HLA-DOB","HLA-DPA1","HLA-DPB1","HLA-DQA1","HLA-DQA2","HLA-DQB1","HLA-DQB2","HLA-DQB2","HLA-DRB1","HLA-DRB5")
+
+##Fit model of differential expression
+gene_fits <- fit_models(PDAC_cds, model_formula_str = "~TN")
+
+##Save fitted models
+saveRDS(gene_fits, file="DuctalDE_forTvsN.rds")
+
+##Evaluate fits
+evaluate_fits(gene_fits)
+
+##Extract coefficient table
+fit_coefs <- coefficient_table(gene_fits)
+
+##Save coefficient table
+saveRDS(fit_coefs, file="fit_coefs.rds")
+
+##Create table of DF and subset for MHCII genes
+MHCII_table <- fit_coefs %>% filter(term == "TNT")
+MHCII_table_subset <- MHCII_table(MHCII_table$gene_short_name %in% MHCII_genes)
+MHCII_table_subset %>% filter (q_value < 0.05) %>%
+         dplyr::select(gene_short_name, term, p_value, q_value, estimate)
+##Didn't save due to size of files -- unnecessary since we saved fit_coefs
+saveRDS(MHCII_table, file="MHCII_table.rds")
+saveRDS(MHCII_table_subset, file="MHCII_table_subset.rds")
+
+##Save DE results for MHCII Genes
+MHCII_table_subset_saved <- MHCII_table_subset %>%
+         dplyr::select(gene_short_name, term, p_value, q_value, estimate)
+write.csv(MHCII_table_subset_saved, file="MHCII_table_subset.csv")
+
+```
+###-------------------------------------------###
+
+#DE Successful
+
+###-------------------------------------------###
+
+
+##Figures Done on PC
+```{r}
+##Load DE from JHPCE
+MHCII_table_subset <- read.csv("MHCII_table_subset.csv", row.names = 2)
+
+##Load Atlas
+PDAC_cds <- readRDS("cds_duct_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph.rds")
+rownames(PDAC_cds) <- rowData(PDAC_cds)$gene_short_name
+
+##Subset Atlas for MHCII Genes
+cds_subset <- PDAC_cds[rownames(PDAC_cds) %in% MHCII_genes,]
+
+##Make Figures of results
+pdf(file = "Duct_MHCII_DE_wholegenome.pdf")
+for(i in rownames(cds_subset)){
+print(plot_genes_violin(cds_subset[i,], group_cells_by="TN") + annotation_custom(grobTree(textGrob(paste("q-value=",MHCII_table_subset[paste(i),"q_value"], sep = " "), x=0.1,  y=0.95, hjust=0, gp=gpar(col="Black", fontsize=9, fontface="italic")))))
+}
+```
+
+
+

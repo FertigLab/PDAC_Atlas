@@ -1,0 +1,227 @@
+---
+title: "Domino_PDAC_EpCAF_PENG_HG38only"
+author: "Joe"
+date: "6/24/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Load Packages
+```{r}
+library(monocle3)
+library(domino)
+```
+
+##Load Data
+```{r}
+cds <- readRDS("PDAC/cds_combined_8_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph.rds")
+```
+
+##Subset CDS for PENG CAF and Epithelial only -- Setting up pySCENIC object
+```{r}
+##Subset CDS for T_Peng, CAF and Epithelial_cancer pops
+cds_PENG_EpCAF <- cds[,pData(cds)$TN_manuscript=='T_Peng']
+cds_PENG_EpCAF <- cds_PENG_EpCAF[,(!is.na(pData(cds_PENG_EpCAF)$TN_assigned_cell_type_immune_broad)) & (pData(cds_PENG_EpCAF)$TN_assigned_cell_type_immune_broad == "Epithelial_cancer" |  pData(cds_PENG_EpCAF)$TN_assigned_cell_type_immune_broad == "Fibroblast")]
+
+#Reprocess
+cds_PENG_EpCAF <- reduce_dimension(cds_PENG_EpCAF)
+cds_PENG_EpCAF <- cluster_cells(cds_PENG_EpCAF)
+
+##Adding EpCAF cell annotation column
+#Fixing CAFpop annotations
+CAFpop<- pData(cds_PENG_EpCAF)$Classifier_T_Fibroblast_only
+
+for (i in 1:14028){
+  if (is.na(CAFpop[i])){
+  CAFpop[i] <- "NA"
+  }
+  if (CAFpop[i] == "dual_negative"){
+    CAFpop[i] <- "dual_negative_CAF"
+  }
+  if (CAFpop[i] == "dual_positive"){
+    CAFpop[i] <- "dual_positive_CAF"
+  }
+}
+
+#Fixing EpPop Annotations
+EPpop<- pData(cds_PENG_EpCAF)$Classifier_T_duct
+
+for (i in 1:14028){
+  if (is.na(EPpop[i])){
+  EPpop[i] <- "NA"
+  }
+  if (EPpop[i] == "dual_negative"){
+    EPpop[i] <- "dual_negative_Ep"
+  }
+  if (EPpop[i] == "dual_positive"){
+    EPpop[i] <- "dual_positive_Ep"
+  }
+}
+
+#Combine CAFpop and EPpop; Fixing NAs
+Combined <- EPpop
+
+for (i in 1:14028){
+  if (Combined[i] == "NA"){
+    Combined[i] <- CAFpop[i]
+  }
+}
+
+for (i in 1:14028){
+  if (Combined[i] == "NA"){
+    Combined[i] <- paste0(pData(cds_PENG_EpCAF)$TN_assigned_cell_type_immune_broad[i],'_unspecified')
+  }
+}
+
+##Add new column to pData
+pData(cds_PENG_EpCAF)$EpCAF_Annot <- Combined
+
+##VERIFICATION
+table(pData(cds_PENG_EpCAF)$Classifier_T_duct)
+table(pData(cds_PENG_EpCAF)$Classifier_T_Fibroblast_only)
+table(pData(cds_PENG_EpCAF)$EpCAF_Annot)
+
+##remove the unknowns
+cds_PENG_EpCAF <- cds_PENG_EpCAF[,(!pData(cds_PENG_EpCAF)$EpCAF_Annot=='Fibroblast_unspecified' & !pData(cds_PENG_EpCAF)$EpCAF_Annot=='Epithelial_cancer_unspecified')]
+
+##verify removal
+table(pData(cds_PENG_EpCAF)$EpCAF_Annot)
+
+#Save
+save(cds_PENG_EpCAF, file="PDAC/DOMINO/cds_PENG_EpCAF_subset.rds")
+
+##SAVING AS LOOM for pySCENIC use
+expr.mat <- counts(cds_PENG_EpCAF)
+rownames(expr.mat)<- rowData(cds_PENG_EpCAF)$gene_short_name
+
+library(loomR)
+loom <- create(filename ="PDAC/DOMINO/cds_PENG_EpCAF.loom", data = expr.mat)
+
+connect("PDAC/DOMINO/cds_PENG_EpCAF.loom", mode='r')
+loom$get.attribute.df(1)
+loom$close()
+
+```
+
+##---------------------------------
+```{r}
+#RUNNING pySCENIC on MARCC
+```
+##---------------------------------
+
+
+##Load pySCENIC output and create DOMINO object
+```{r}
+##Load in auc table
+auc <- read.table("PDAC/PENG_HG38only/auc_PDAC_PENG_EpCAF_hg38.csv", header = TRUE, row.names = 1, 
+    stringsAsFactors = FALSE, sep = ',')
+
+##Calculate zscore and extract expression matrix
+zscore <- as.matrix(normalized_counts(cds_PENG_EpCAF))
+rownames(zscore)<- rowData(cds_PENG_EpCAF)$gene_short_name
+expr.mat.PENG <- counts(cds_PENG_EpCAF)
+rownames(expr.mat.PENG)<- rowData(cds_PENG_EpCAF)$gene_short_name
+
+##Create domino object
+PDAC_PENG_EpCAF_EpCAF_createDOM = create_domino(signaling_db = 'PDAC/DOMINO/cpdb/', features = t(auc), counts= expr.mat.PENG, z_scores=zscore, clusters=as.factor(pData(cds_PENG_EpCAF)$EpCAF_Annot), remove_rec_dropout = FALSE, df='PDAC/PENG_HG38only/regulons_PDAC_PENG_EpCAF_hg38.csv')
+
+##Build domino network
+PDAC_PENG_EpCAF_EpCAFD = build_domino(PDAC_PENG_EpCAF_EpCAF_createDOM, min_tf_pval = .001, max_rec_per_tf = 10, rec_tf_cor_threshold = .25, max_tf_per_clust = 10)
+
+#Save
+save(PDAC_PENG_EpCAF_EpCAF_createDOM, file="PDAC/PENG_HG38only/PDAC_PENG_HG38only_EpCAF_celltypeCREATEDOM")
+save(PDAC_PENG_EpCAF_EpCAFD, file="PDAC/PENG_HG38only/PDAC_PENG_HG38only_EpCAF_celltypeDOM")
+```
+##Reorder signalling clusters to be the same
+```{r}
+#Basal
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["Basal"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["Basal"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#Classical
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["Classical"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["Classical"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_negative_CAF
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_CAF"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_CAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_negative_Ep
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_Ep"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_Ep"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_positive_CAF
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_CAF"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_CAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_positive_Ep
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_Ep"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_Ep"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#iCAF
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["iCAF"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["iCAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#myCAF
+PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["myCAF"]] <- PDAC_PENG_EpCAF_EpCAFD@cl_signaling_matrices[["myCAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+
+```
+
+##Domino Visuals
+```{r}
+pdf(file="PENG_HG38only_DominoFigures_EpCAFAnnotated_nodropout_reorderedHEATMAPS.pdf")
+
+signaling_network(PDAC_PENG_EpCAF_EpCAFD, edge_weight = .5, max_thresh = 2.5)
+
+#---------------------
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'Basal', layout = 'fr')
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'Classical', layout = 'fr')
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'dual_negative_CAF', layout = 'fr')
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'dual_negative_Ep', layout = 'fr')
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'dual_positive_CAF', layout = 'fr')
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'dual_positive_Ep', layout = 'fr')
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'iCAF', layout = 'fr')
+
+gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = 'myCAF', layout = 'fr')
+
+#----------------------
+
+signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD)
+
+#---------------------
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'Basal', max_thresh = 2.5, title = "Basal incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'Classical', max_thresh = 2.5, title = "Classical incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'dual_negative_CAF', max_thresh = 2.5, title = "dual_negative_CAF incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'dual_negative_Ep', max_thresh = 2.5, title = "dual_negative_Ep incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'dual_positive_CAF', max_thresh = 2.5, title = "dual_positive_CAF incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'dual_positive_Ep', max_thresh = 2.5, title = "dual_positive_Ep incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'iCAF', max_thresh = 2.5, title = "iCAF incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_PENG_EpCAF_EpCAFD, rec_clust = 'myCAF', max_thresh = 2.5, title = "myCAF incoming_signaling_heatmap", Colv=NA)
+
+#---------------------
+
+cor_heatmap(PDAC_PENG_EpCAF_EpCAFD, bool = FALSE, mark_connections = TRUE)
+
+info = gene_network(PDAC_PENG_EpCAF_EpCAFD, clust = levels(PDAC_PENG_EpCAF_EpCAFD@clusters), 
+                    lig_scale = FALSE, layout = 'fr')
+
+plot(info$graph, layout = info$layout, vertex.size = 3, edge.color = 'grey', 
+     vertex.frame.color = 'black', vertex.label = NA)
+
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+
+

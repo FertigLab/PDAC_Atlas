@@ -1,0 +1,228 @@
+---
+title: "Domino_PDAC_EpCAF_STEELE_HG38only"
+author: "Joe"
+date: "6/24/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##Load Packages
+```{r}
+library(monocle3)
+library(domino)
+```
+
+
+##Load Data
+```{r}
+cds <- readRDS("PDAC/cds_combined_8_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(6).rds")
+```
+
+##Subset CDS for Steele CAF and Epithelial only -- Setting up pySCENIC object
+```{r}
+cds_Steele_EpCAF <- cds[,pData(cds)$TN_manuscript=='T_Steele']
+cds_Steele_EpCAF <- cds_Steele_EpCAF[,(!is.na(pData(cds_Steele_EpCAF)$TN_assigned_cell_type_immune_broad)) & (pData(cds_Steele_EpCAF)$TN_assigned_cell_type_immune_broad == "Epithelial_cancer" |  pData(cds_Steele_EpCAF)$TN_assigned_cell_type_immune_broad == "Fibroblast")]
+
+cds_Steele_EpCAF <- reduce_dimension(cds_Steele_EpCAF)
+cds_Steele_EpCAF <- cluster_cells(cds_Steele_EpCAF)
+
+##Adding EpCAF cell annotation column
+
+#Fixing CAFpop annotations
+CAFpop<- pData(cds_Steele_EpCAF)$Classifier_T_Fibroblast_only
+
+for (i in 1:length(pData(cds_Steele_EpCAF)$Classifier_T_Fibroblast_only)){
+  if (is.na(CAFpop[i])){
+  CAFpop[i] <- "NA"
+  }
+  if (CAFpop[i] == "dual_negative"){
+    CAFpop[i] <- "dual_negative_CAF"
+  }
+  if (CAFpop[i] == "dual_positive"){
+    CAFpop[i] <- "dual_positive_CAF"
+  }
+}
+
+#Fixing EpPop Annotations
+EPpop<- pData(cds_Steele_EpCAF)$Classifier_T_duct
+
+for (i in 1:length(pData(cds_Steele_EpCAF)$Classifier_T_duct)){
+  if (is.na(EPpop[i])){
+  EPpop[i] <- "NA"
+  }
+  if (EPpop[i] == "dual_negative"){
+    EPpop[i] <- "dual_negative_Ep"
+  }
+  if (EPpop[i] == "dual_positive"){
+    EPpop[i] <- "dual_positive_Ep"
+  }
+}
+
+#Combine CAFpop and EPpop; Fixing NAs
+Combined <- EPpop
+
+for (i in 1:length(pData(cds_Steele_EpCAF)$Classifier_T_duct)){
+  if (Combined[i] == "NA"){
+    Combined[i] <- CAFpop[i]
+  }
+}
+
+for (i in 1:length(pData(cds_Steele_EpCAF)$TN_assigned_cell_type_immune_broad)){
+  if (Combined[i] == "NA"){
+    Combined[i] <- paste0(pData(cds_Steele_EpCAF)$TN_assigned_cell_type_immune_broad[i],'_unspecified')
+  }
+}
+
+pData(cds_Steele_EpCAF)$EpCAF_Annot <- Combined
+
+##VERIFICATION
+table(pData(cds_Steele_EpCAF)$Classifier_T_duct)
+table(pData(cds_Steele_EpCAF)$Classifier_T_Fibroblast_only)
+table(pData(cds_Steele_EpCAF)$EpCAF_Annot)
+
+cds_Steele_EpCAF <- cds_Steele_EpCAF[,(!pData(cds_Steele_EpCAF)$EpCAF_Annot=='Fibroblast_unspecified' & !pData(cds_Steele_EpCAF)$EpCAF_Annot=='Epithelial_cancer_unspecified')]
+
+table(pData(cds_Steele_EpCAF)$EpCAF_Annot)
+
+save(cds_Steele_EpCAF, file="PDAC/DOMINO/cds_Steele_EpCAF_subset.rds")
+
+PDAC_Steele_EpCAF_expMat <- counts(cds_Steele_EpCAF)
+rownames(PDAC_Steele_EpCAF_expMat) <- rowData(cds_Steele_EpCAF)$gene_short_name
+write.csv(as.matrix(PDAC_Steele_EpCAF_expMat), file="PDAC/DOMINO/PDAC_Steele_EpCAF_expMat.tsv")
+
+##SAVING AS LOOM for pySCENIC
+expr.mat <- counts(cds_Steele_EpCAF)
+rownames(expr.mat)<- rowData(cds_Steele_EpCAF)$gene_short_name
+
+library(loomR)
+loom <- create(filename ="PDAC/DOMINO/cds_Steele_EpCAF.loom", data = expr.mat)
+
+connect("PDAC/DOMINO/cds_Steele_EpCAF.loom", mode='r')
+loom$get.attribute.df(1)
+loom$close()
+
+```
+
+##---------------------------------
+```{r}
+#RUNNING pySCENIC on MARCC
+```
+##---------------------------------
+
+
+##Load pySCENIC output and create DOMINO object
+```{r}
+##Load in auc table
+auc <- read.table("PDAC/STEELE_HG38only/auc_PDAC_Steele_EpCAF_hg38.csv", header = TRUE, row.names = 1, 
+    stringsAsFactors = FALSE, sep = ',')
+
+##Calculate zscore and extract expression matrix
+zscore <- as.matrix(normalized_counts(cds_Steele_EpCAF))
+rownames(zscore)<- rowData(cds_Steele_EpCAF)$gene_short_name
+expr.mat.Steele <- counts(cds_Steele_EpCAF)
+rownames(expr.mat.Steele)<- rowData(cds_Steele_EpCAF)$gene_short_name
+
+##Create domino object
+PDAC_STEELE_EpCAF_EpCAF_createDOM = create_domino(signaling_db = 'PDAC/DOMINO/cpdb/', features = t(auc), counts= expr.mat.Steele, z_scores=zscore, clusters=as.factor(pData(cds_Steele_EpCAF)$EpCAF_Annot), remove_rec_dropout = FALSE, df='PDAC/STEELE_HG38only/regulons_PDAC_Steele_EpCAF_hg38.csv')
+
+##Build domino network
+PDAC_STEELE_EpCAF_EpCAFD = build_domino(PDAC_STEELE_EpCAF_EpCAF_createDOM, min_tf_pval = .001, max_rec_per_tf = 10, rec_tf_cor_threshold = .25, max_tf_per_clust = 10)
+
+#Save
+save(PDAC_STEELE_EpCAF_EpCAF_createDOM, file="PDAC/STEELE_HG38only/PDAC_Steele_HG38only_EpCAF_celltypeCREATEDOM")
+save(PDAC_STEELE_EpCAF_EpCAFD, file="PDAC/STEELE_HG38only/PDAC_Steele_HG38only_EpCAF_celltypeDOM")
+```
+##Reorder signalling clusters to be the same
+```{r}
+#Basal
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["Basal"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["Basal"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#Classical
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["Classical"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["Classical"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_negative_CAF
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_CAF"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_CAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_negative_Ep
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_Ep"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_negative_Ep"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_positive_CAF
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_CAF"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_CAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#dual_positive_Ep
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_Ep"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["dual_positive_Ep"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#iCAF
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["iCAF"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["iCAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+#myCAF
+PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["myCAF"]] <- PDAC_STEELE_EpCAF_EpCAFD@cl_signaling_matrices[["myCAF"]][,c("L_Basal","L_Classical","L_dual_negative_Ep","L_dual_positive_Ep", "L_iCAF","L_myCAF","L_dual_negative_CAF","L_dual_positive_CAF")]
+
+```
+
+##Domino Visuals
+```{r}
+pdf(file="PDAC/STEELE_HG38only/STEELE_HG38only_DominoFigures_EpCAFAnnotated_nodropout_reorderedHEATMAPS.pdf")
+
+signaling_network(PDAC_STEELE_EpCAF_EpCAFD, edge_weight = .5, max_thresh = 2.5)
+
+#---------------------
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'Basal', layout = 'fr')
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'Classical', layout = 'fr')
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'dual_negative_CAF', layout = 'fr')
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'dual_negative_Ep', layout = 'fr')
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'dual_positive_CAF', layout = 'fr')
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'dual_positive_Ep', layout = 'fr')
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'iCAF', layout = 'fr')
+
+gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = 'myCAF', layout = 'fr')
+
+#----------------------
+
+signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD)
+
+#---------------------
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'Basal', max_thresh = 2.5, title = "Basal incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'Classical', max_thresh = 2.5, title = "Classical incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'dual_negative_CAF', max_thresh = 2.5, title = "dual_negative_CAF incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'dual_negative_Ep', max_thresh = 2.5, title = "dual_negative_Ep incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'dual_positive_CAF', max_thresh = 2.5, title = "dual_positive_CAF incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'dual_positive_Ep', max_thresh = 2.5, title = "dual_positive_Ep incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'iCAF', max_thresh = 2.5, title = "iCAF incoming_signaling_heatmap", Colv=NA)
+
+incoming_signaling_heatmap(PDAC_STEELE_EpCAF_EpCAFD, rec_clust = 'myCAF', max_thresh = 2.5, title = "myCAF incoming_signaling_heatmap", Colv=NA)
+
+#---------------------
+
+cor_heatmap(PDAC_STEELE_EpCAF_EpCAFD, bool = FALSE, mark_connections = TRUE)
+
+info = gene_network(PDAC_STEELE_EpCAF_EpCAFD, clust = levels(PDAC_STEELE_EpCAF_EpCAFD@clusters), 
+                    lig_scale = FALSE, layout = 'fr')
+
+plot(info$graph, layout = info$layout, vertex.size = 3, edge.color = 'grey', 
+     vertex.frame.color = 'black', vertex.label = NA)
+
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+
+
