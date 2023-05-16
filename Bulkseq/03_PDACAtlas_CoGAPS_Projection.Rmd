@@ -1,0 +1,242 @@
+---
+title: "03_PDACAtlas_CoGAPS_Projection"
+author: "Joe"
+date: "2/28/2023"
+output:
+  html_document:
+    toc: true
+    theme: united
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, dev=c("png","pdf"))
+```
+
+## Load Packages
+```{r}
+library("DT")
+library(DESeq2)
+library(ggplot2)
+library(msigdbr)
+library(fgsea)
+library(data.table)
+library(ggbiplot)
+library(ComplexHeatmap)
+library(EnhancedVolcano)
+library(ggpubr)
+library(CoGAPS)
+library(projectR)
+set.seed(1234)
+sessionInfo()
+```
+
+## Load Data
+```{r}
+#=====================
+# set  parameters
+#Set WD
+wd ='SG_Novogene_12192022/'
+# the name of the folder with output
+outputFolder = paste0(wd,'Results/')
+# an RDS file with txi object
+inputTXIobj = paste0(wd,'/Data/txi_data_all.rds')
+# a tab-delimited file with file annotations that will be used in DE design
+inputAnnotationFile = 'SG_Novogene_12192022/SG_Novogene_Annot.csv'
+# organism
+org = "Homo sapiens"
+# set of pathways for gene set analysis
+geneSets = 'H'
+geneSets = 'C6'
+
+#=======================
+# create output folder if it doesn't exist
+if(!file.exists(outputFolder)) dir.create(outputFolder)
+
+#================================
+# load txi object
+countsDat <- readRDS(inputTXIobj)
+#storage.mode(countsDat[["counts"]]) <- "integer"
+counts <- as.data.frame(countsDat[["counts"]])
+counts <- counts[rowSums(counts)>1,]
+
+write.table(cbind(Genes = rownames(counts), counts), file = "SG_Novogene_12192022/SG_Novogene_Counts.tsv", sep = '\t', quote = F, row.names = F)
+
+# load sample annotation
+anno=read.csv(inputAnnotationFile)
+rownames(anno)=anno$FileName
+anno= anno[colnames(counts),]
+
+##Check Counts Pass QC
+boxplot(log2(counts+1), ylab='log2(counts+1)', 
+        xlab='samples', las=2, cex.axis = 0.25, 
+        border = ifelse(apply(log2(counts+1),2,median)==0,
+                        'red','black'))
+legend('topleft', pch=c('-'), legend = c('median > 0', 'median < 0'),
+       col=c('black','red'), cex=0.5)
+
+# create DEseq object from txi
+dds <- DESeqDataSetFromTximport(countsDat, anno, design=~Condition)
+```
+
+### PCA plots
+```{r}
+### PCA
+##Extract VST
+vstDat <- assay(vst(dds))
+vstDat <- vstDat[apply(vstDat,1,sd)>0,]
+
+anno <- anno[colnames(vstDat),]
+
+pcs <- prcomp(t(vstDat),scale=T)
+
+ggbiplot(pcs,groups = anno$Celltype, var.axes = F) +
+  guides(color = guide_legend(title = "Celltype")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Condition, var.axes = F) +
+  guides(color = guide_legend(title = "Condition")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Treatment, var.axes = F) +
+  guides(color = guide_legend(title = "Treatment")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Patient, var.axes = F) +
+  guides(color = guide_legend(title = "Patient")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = as.character(anno$Batch), var.axes = F) +
+  guides(color = guide_legend(title = "Batch")) + ggtitle("All Samples PCA")
+
+```
+
+### Heatmap of Marker Genes
+```{r}
+markerGenes <- c('FAP','VIM','EPCAM')
+
+ht <- Heatmap(t(apply(vstDat[markerGenes,],1,scale)),
+        clustering_distance_rows = 'pearson',
+        clustering_distance_columns = 'pearson')
+
+dfAnnot = anno[,-1]
+row.names(dfAnnot) <- anno$FileName
+
+HA <- HeatmapAnnotation(df = dfAnnot)
+
+Heatmap(t(apply(vstDat[markerGenes,],1,scale)),
+        top_annotation = HA,
+        clustering_distance_rows = 'pearson',
+        clustering_distance_columns = 'pearson')
+```
+
+### Correction of mislabeled samples
+```{r}
+##Plot of JHH348 VIM and EPCAM
+
+boxplot(log2(counts["VIM",c("JHH348Org","JHH348CAF","JHH348CoOrg","JHH348CoCAF")]+1), ylab='log2(VIM+1)', 
+        xlab='samples', las=2, cex.axis = 1)
+boxplot(log2(counts["EPCAM",c("JHH348Org","JHH348CAF","JHH348CoOrg","JHH348CoCAF")]+1), ylab='log2(EPCAM+1)', 
+        xlab='samples', las=2, cex.axis = 1)
+
+##JHH348CoOrg --> CoCAF because high levels of VIM, low EPCAM
+##JHH348CoCAF --> CoOrg because high levels of EPCAM, low VIM
+
+colnames(countsDat$abundance)[c(6,7)] <- c("JHH348CoOrg","JHH348CoCAF")
+colnames(countsDat$counts)[c(6,7)] <- c("JHH348CoOrg","JHH348CoCAF")
+colnames(countsDat$length)[c(6,7)] <- c("JHH348CoOrg","JHH348CoCAF")
+
+counts_corrected <- as.data.frame(countsDat[["counts"]])
+counts_corrected <- counts_corrected[rowSums(counts_corrected)>1,]
+
+write.table(cbind(Genes = rownames(counts_corrected), counts_corrected), file = "SG_Novogene_12192022/SG_Novogene_Counts_corrected.tsv", sep = '\t', quote = F, row.names = F)
+
+counts_corrected_org <- counts_corrected[,rownames(anno[anno$Celltype=="ORG",])]
+write.table(cbind(Genes = rownames(counts_corrected_org), counts_corrected_org), file = "SG_Novogene_12192022/SG_Novogene_Counts_corrected_org.tsv", sep = '\t', quote = F, row.names = F)
+
+counts_corrected_caf <- counts_corrected[,rownames(anno[anno$Celltype=="CAF",])]
+write.table(cbind(Genes = rownames(counts_corrected_caf), counts_corrected_caf), file = "SG_Novogene_12192022/SG_Novogene_Counts_corrected_caf.tsv", sep = '\t', quote = F, row.names = F)
+```
+
+### SampInfo
+```{r}
+table(anno$Celltype)
+table(anno$Age)
+table(anno$Sex)
+table(anno$Treatment)
+table(anno$Condition)
+
+table(anno$Patient,anno$Celltype)
+table(anno$Celltype,anno$Treatment)
+table(anno$Celltype,anno$Condition)
+```
+
+### Repeat PCA After corrected names
+
+```{r}
+# create DEseq object from txi
+anno <- anno[colnames(countsDat$counts),]
+dds <- DESeqDataSetFromTximport(countsDat, anno, design=~Condition)
+##Extract VST
+vstDat <- assay(vst(dds))
+vstDat <- vstDat[apply(vstDat,1,sd)>0,]
+
+anno <- anno[colnames(vstDat),]
+
+pcs <- prcomp(t(vstDat),scale=T)
+
+ggbiplot(pcs,groups = anno$Celltype, var.axes = F) +
+  guides(color = guide_legend(title = "Celltype")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Condition, var.axes = F) +
+  guides(color = guide_legend(title = "Condition")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Treatment, var.axes = F) +
+  guides(color = guide_legend(title = "Treatment")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Patient, var.axes = F) +
+  guides(color = guide_legend(title = "Patient")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = as.character(anno$Batch), var.axes = F) +
+  guides(color = guide_legend(title = "Batch")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$iCAF, var.axes = F) +
+  guides(color = guide_legend(title = "iCAF")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$myCAF, var.axes = F) +
+  guides(color = guide_legend(title = "myCAF")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Basal, var.axes = F) +
+  guides(color = guide_legend(title = "Basal")) + ggtitle("All Samples PCA")
+
+ggbiplot(pcs,groups = anno$Classical, var.axes = F) +
+  guides(color = guide_legend(title = "Classical")) + ggtitle("All Samples PCA")
+
+```
+
+## Prepare for ProjR
+```{r}
+##Load Atlas Patterns (from Jacob)  -- P3&4 = Cell Cycle, P7 = Inflammation, P8 = Hypoxia
+Atlas_Epi_Patterns <- readRDS(file="PDAC/Data/epiMat-e74511f6-8a1d-4929-ab42-1cb67c5a4fb6-result-8pattern.rds")
+
+#Extract Feature Loadings for ProjR
+Atlas_Epi_FeatLoadings <- Atlas_Epi_Patterns@featureLoadings
+```
+
+## Running ProjR
+```{r}
+PDAC_SG_Projection = projectR(as.matrix(vstDat),loadings=Atlas_Epi_FeatLoadings,full=TRUE)
+
+Projection_Patterns <- as.data.frame(t(PDAC_SG_Projection$projection))
+
+##Combine Projection with Anno File
+anno <- merge(anno,Projection_Patterns, by="row.names")
+rownames(anno) <- anno$Row.names
+anno <- anno[,-1]
+
+##org and caf specific files
+Org_anno <- anno[anno$Celltype=="ORG",]
+CAF_anno <- anno[anno$Celltype=="CAF",]
+```
+
+## Plotting results
+```{r}
+ggplot(Org_anno[Org_anno$Treatment=="UNTREATED",], aes(x=Condition,y=Pattern_7))+geom_boxplot()+ylab("Atlas CoGAPS Pattern 7")+ggtitle("Atlas CoGAPS Pattern 7 Projection onto Bulk Untreated Organoid Samples") + geom_point(aes(col=Patient)) + scale_x_discrete(limits=c("MONO","CO")) + stat_compare_means(comparisons = list(c("MONO","CO")),method="t.test", paired = T)+ theme(axis.text.x = element_text(angle = 45, hjust=1))+theme_minimal()+ theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) + geom_line(aes(group=Patient, col=Patient))
+```
+

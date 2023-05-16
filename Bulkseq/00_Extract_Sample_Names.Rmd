@@ -1,0 +1,17 @@
+---
+title: "Extract_Sample_Names"
+author: "Joe"
+date: "12/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+sampNames <- list.dirs("SG_Novogene_12192022/01.RawData/", full.names = F)
+
+write.csv(sampNames, "SG_Novogene_Annot.csv")
+```
+
