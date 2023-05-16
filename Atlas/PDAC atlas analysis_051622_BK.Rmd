@@ -1,0 +1,649 @@
+---
+title: "PDAC atlas analysis"
+author: "Benedict Kinny-Köster"
+date: "16 5 2022"
+output: html_document
+---
+
+```{r}
+
+###Gene set scores, epithelial and CAF subtypes
+library(monocle3)
+library(Seurat)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+library(circlize)
+library(ComplexHeatmap)
+
+### ductal subtypes
+cds_duct <- readRDS("cds_T_duct_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(4).rds") 
+#35407 cells
+plot_cells(cds_duct, color_cells_by = "T_duct_cluster_resolution_4", show_trajectory_graph = FALSE)
+cds_duct = cluster_cells(cds_duct, resolution=0.00005)
+plot_cells(cds_duct, show_trajectory_graph = FALSE)
+
+gene_metadata <- as.data.frame(cds_duct@rowRanges@elementMetadata@listData)
+
+##### resolution e-4
+Cluster_4 <- as.data.frame(colData(cds_duct)$T_duct_cluster_resolution_4)
+colnames(Cluster_4) <- "V1"
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"10","A")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"11","B")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"12","C")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"13","D")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"14","E")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"15","F")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"16","G")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"17","H")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"18","I")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"19","J")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"20","K")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"21","L")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"22","M")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"23","N")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"24","O")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"25","P")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"26","Q")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"27","R")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"1","01")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"2","02")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"3","03")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"4","04")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"5","05")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"6","06")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"7","07")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"8","08")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"9","09")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"A","10")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"B","11")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"C","12")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"D","13")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"E","14")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"F","15")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"G","16")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"H","17")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"I","18")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"J","19")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"K","20")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"L","21")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"M","22")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"N","23")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"O","24")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"P","25")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"Q","26")
+Cluster_4$V1 <- str_replace(Cluster_4$V1,"R","27")
+test_1 <- cbind(as.data.frame(colData(cds_duct)$T_duct_cluster_resolution_4),Cluster_4$V1)
+colnames(Cluster_4) <- "T_duct_cluster_resolution_4"
+colData(cds_duct)[["T_duct_cluster_resolution_4"]] <- Cluster_4$T_duct_cluster_resolution_4
+plot_cells(cds_duct, color_cells_by = "T_duct_cluster_resolution_4", show_trajectory_graph = FALSE, label_cell_groups = FALSE) + scale_color_manual(values=colors_duct_annotation$V1)
+plot_cells(cds_duct, color_cells_by = "T_duct_cluster_resolution_4", show_trajectory_graph = FALSE) + scale_color_manual(values=colors_duct_annotation$V1)
+plot_cells(cds_duct, color_cells_by = "T_duct_cluster_resolution_4", label_cell_groups = FALSE) + scale_color_manual(values=colors_duct_annotation$V1)
+plot_cells(cds_duct, color_cells_by = "manuscript", show_trajectory_graph = FALSE, label_cell_groups = FALSE)
+
+# create Seurat object from CDS
+# CAVE gene names in assay correspond to gene_ensembl_ID from rowRanges in CDS
+count_matrix_duct <- assay(cds_duct)
+count_matrix_duct@Dimnames[[1]] <- cds_duct@rowRanges@elementMetadata@listData[["gene_short_name"]]
+cell_metadata_duct <- as.data.frame(colData(cds_duct)@listData)
+sobj_duct <- CreateSeuratObject(counts = count_matrix_duct, meta.data = cell_metadata_duct)
+
+# preprocess in Seurat
+sobj_duct <- NormalizeData(sobj_duct)
+sobj_duct <- FindVariableFeatures(sobj_duct)
+sobj_duct <- ScaleData(sobj_duct, vars.to.regress = "manuscript")
+sobj_duct <- RunPCA(sobj_duct, features = VariableFeatures(object = sobj_duct))
+
+# gene sets classical and basal-like according to Moffitt et al.
+#classical_features <- list(c(
+  "ENSG00000113303",
+  "ENSG00000198643",
+  "ENSG00000173467",
+  "ENSG00000196188",
+  "ENSG00000090382",
+  "ENSG00000160181",
+  "ENSG00000160182",
+  "ENSG00000109511",
+  "ENSG00000171747",
+  "ENSG00000069764",
+  "ENSG00000086548",
+  "ENSG00000019102",
+  "ENSG00000127324",
+  "ENSG00000070526",
+  "ENSG00000106541",
+  "ENSG00000160180",
+  "ENSG00000166866",
+  "ENSG00000180745",
+  "ENSG00000171431",
+  "ENSG00000079112",
+  "ENSG00000122711",
+  "ENSG00000134193"))
+
+Moffitt_classical_features <- list(c("BTNL8","FAM3D","PRR15L","AGR3","CTSE","LOC400573","LYZ","TFF2","TFF1","ANXA10","LGALS4","PLA2G10","CEACAM6","VSIG2","TSPAN8","ST6GALNAC1","AGR2","TFF3","CYP3A7","MYO1A","CLRN3","KRT20","CDH17","SPINK4","REG4"))
+Moffitt_classical_features_df <- as.data.frame(Moffitt_classical_features)
+colnames(Moffitt_classical_features_df) <- "V1"
+length(Moffitt_classical_features_df$V1)
+classical_not_in_gene_metadata <- Moffitt_classical_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix_duct))]
+classical_in_gene_metadata <- Moffitt_classical_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+#basal_features <- list(c(
+  "ENSG00000102243",
+  "ENSG00000196754",
+  "ENSG00000167656",
+  "ENSG00000163209",
+  "ENSG00000169469", 
+  "ENSG00000186007",
+  "ENSG00000171346",
+  "ENSG00000073737",
+  "ENSG00000109321",
+  "ENSG00000175315",
+  "ENSG00000057149",
+  "ENSG00000205420",
+  "ENSG00000206073",
+  "ENSG00000147689",
+  "ENSG00000136155",
+  "ENSG00000137440",
+  "ENSG00000135480",
+  "ENSG00000128422",
+  "ENSG00000138271",
+  "ENSG00000131746",
+  "ENSG00000117394"))
+
+Moffitt_basal_features <- list(c("VGLL1","UCA1","S100A2","LY6D","SPRR3","SPRR1B","LEMD1","KRT15","CTSV","DHRS9","AREG","CST6","SERPINB3","KRT6C","KRT6A","SERPINB4","FAM83A","SCEL","FGFBP1","KRT7","KRT17","GPR87","TNS4","SLC2A1","ANXA8L2"))
+Moffitt_basal_features_df <- as.data.frame(Moffitt_basal_features)
+colnames(Moffitt_basal_features_df) <- "V1"
+length(Moffitt_basal_features_df$V1)
+basal_not_in_gene_metadata <- Moffitt_basal_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix_duct))]
+basal_in_gene_metadata <- Moffitt_basal_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+Puram_pEMT_features <- list(c("SERPINE1","TGFBI","MMP10","LAMC2","P4HA2","PDPN","ITGA5","LAMA3","CDH13","TNC","MMP2","EMP3","INHBA","LAMB3","VIM","SEMA3C","PRKCDBP","ANXA5","DHRS7","ITGB1","ACTN1","CXCR7","ITGB6","IGFBP7","THBS1","PTHLH","TNFRSF6B","PDLIM7","CAV1","DKK3","COL17A1","LTBP1","COL5A2","COL1A1","FHL2","TIMP3","PLAU","LGALS1","PSMD2","CD63","HERPUD1","TPM1","SLC39A14","C1S","MMP1","EXT2","COL4A2","PRSS23","SLC7A8","SLC31A2","ARPC1B","APP","MFAP2","MPZL1","DFNA5","MT2A","MAGED2","ITGA6","FSTL1","TNFRSF12A","IL32","COPB2","PTK7","OCIAD2","TAX1BP3","SEC13","SERPINH1","TPM4","MYH9","ANXA8L1","PLOD2","GALNT2","LEPREL1","MAGED1","SLC38A5","FSTL3","CD99","F3","PSAP","NMRK1","FKBP9","DSG2","ECM1","HTRA1","SERINC1","CALU","TPST1","PLOD3","IGFBP3","FRMD6","CXCL14","SERPINE2","RABAC1","TMED9","NAGK","BMP1","ESYT1","STON2","TAGLN","GJA1"))
+Puram_pEMT_features_df <- as.data.frame(Puram_pEMT_features)
+colnames(Puram_pEMT_features_df) <- "V1"
+length(Puram_pEMT_features_df$V1)
+pEMT_not_in_gene_metadata <- Puram_pEMT_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix_duct))]
+pEMT_in_gene_metadata <- Puram_pEMT_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+NABA_MATRISOME_ECM_features <- list(c("A2M","A2ML1","ABI3BP","ACAN","ADAM10","ADAM11","ADAM12","ADAM15","ADAM17","ADAM18","ADAM19","ADAM2","ADAM20","ADAM21","ADAM22","ADAM23","ADAM28","ADAM29","ADAM30","ADAM32","ADAM33","ADAM7","ADAM8","ADAM9","ADAMDEC1","ADAMTS1","ADAMTS10","ADAMTS12","ADAMTS13","ADAMTS14","ADAMTS15","ADAMTS16","ADAMTS17","ADAMTS18","ADAMTS19","ADAMTS2","ADAMTS20","ADAMTS3","ADAMTS4","ADAMTS5","ADAMTS6","ADAMTS7","ADAMTS8","ADAMTS9","ADAMTSL1","ADAMTSL2","ADAMTSL3","ADAMTSL4","ADAMTSL5","ADIPOQ","AEBP1","AGRN","AGT","AMBN","AMBP","AMELX","AMELY","AMH","ANGPT1","ANGPT2","ANGPT4","ANGPTL1","ANGPTL2","ANGPTL3","ANGPTL4","ANGPTL5","ANGPTL6","ANGPTL7","ANOS1","ANXA1","ANXA10","ANXA11","ANXA13","ANXA2","ANXA3","ANXA4","ANXA5","ANXA6","ANXA7","ANXA8","ANXA8L1","ANXA9","AREG","ARTN","ASPN","ASTL","BCAN","BDNF","BGLAP","BGN","BMP1","BMP10","BMP15","BMP2","BMP3","BMP4","BMP5","BMP6","BMP7","BMP8A","BMP8B","BMPER","BRINP2","BRINP3","BSPH1","BTC","C17orf58","C1QA","C1QB","C1QC","C1QL1","C1QL2","C1QL3","C1QL4","C1QTNF1","C1QTNF2","C1QTNF3","C1QTNF4","C1QTNF5","C1QTNF6","C1QTNF7","C1QTNF8","C1QTNF9","C1QTNF9B","CBLN1","CBLN2","CBLN3","CBLN4","CCBE1","CCL1","CCL11","CCL13","CCL14","CCL15","CCL16","CCL17","CCL18","CCL19","CCL2","CCL20","CCL21","CCL22","CCL23","CCL24","CCL25","CCL26","CCL27","CCL28","CCL3","CCL3L3","CCL4","CCL4L2","CCL5","CCL7","CCL8","CCN1","CCN2","CCN3","CCN4","CCN5","CCN6","CD109","CD209","CDCP2","CELA1","CELA2A","CELA2B","CELA3A","CELA3B","CFC1","CFC1B","CHAD","CHADL","CHRD","CHRDL1","CHRDL2","CILP","CILP2","CLC","CLCF1","CLEC10A","CLEC11A","CLEC12A","CLEC12B","CLEC14A","CLEC17A","CLEC18A","CLEC18B","CLEC18C","CLEC19A","CLEC1A","CLEC1B","CLEC2A","CLEC2B","CLEC2D","CLEC2L","CLEC3A","CLEC3B","CLEC4A","CLEC4C","CLEC4D","CLEC4E","CLEC4F","CLEC4G","CLEC4M","CLEC5A","CLEC6A","CLEC7A","CLEC9A","CNTF","COCH","COL10A1","COL11A1","COL11A2","COL12A1","COL13A1","COL14A1","COL15A1","COL16A1","COL17A1","COL18A1","COL19A1","COL1A1","COL1A2","COL20A1","COL21A1","COL22A1","COL23A1","COL24A1","COL25A1","COL26A1","COL27A1","COL28A1","COL2A1","COL3A1","COL4A1","COL4A2","COL4A3","COL4A4","COL4A5","COL4A6","COL5A1","COL5A2","COL5A3","COL6A1","COL6A2","COL6A3","COL6A5","COL6A6","COL7A1","COL8A1","COL8A2","COL9A1","COL9A2","COL9A3","COLEC10","COLEC11","COLEC12","COLQ","COMP","CPAMD8","CPN2","CRELD1","CRELD2","CRHBP","CRIM1","CRISPLD1","CRISPLD2","CRLF1","CRLF3","CRNN","CSF1","CSF2","CSF3","CSH1","CSH2","CSHL1","CSPG4","CSPG5","CST1","CST11","CST2","CST3","CST4","CST5","CST6","CST7","CST8","CST9","CST9L","CSTA","CSTB","CSTL1","CTF1","CTHRC1","CTSA","CTSB","CTSC","CTSD","CTSE","CTSF","CTSG","CTSH","CTSK","CTSL","CTSO","CTSS","CTSV","CTSW","CTSZ","CX3CL1","CXCL1","CXCL10","CXCL11","CXCL12","CXCL13","CXCL14","CXCL2","CXCL3","CXCL5","CXCL6","CXCL8","CXCL9","DCN","DHH","DMBT1","DMP1","DPT","DSPP","EBI3","ECM1","ECM2","EDA","EDIL3","EFEMP1","EFEMP2","EGF","EGFL6","EGFL7","EGFL8","EGFLAM","EGLN1","EGLN2","EGLN3","ELANE","ELFN1","ELFN2","ELN","ELSPBP1","EMCN","EMID1","EMILIN1","EMILIN2","EMILIN3","EPGN","EPO","EPYC","EREG","ESM1","EYS","F10","F12","F13A1","F13B","F2","F7","F9","FAM20A","FAM20B","FAM20C","FASLG","FBLN1","FBLN2","FBLN5","FBLN7","FBN1","FBN2","FBN3","FCN1","FCN2","FCN3","FGA","FGB","FGF1","FGF10","FGF11","FGF12","FGF13","FGF14","FGF16","FGF17","FGF18","FGF19","FGF2","FGF20","FGF21","FGF22","FGF23","FGF3","FGF4","FGF5","FGF6","FGF7","FGF8","FGF9","FGFBP1","FGFBP2","FGFBP3","FGG","FGL1","FGL2","FLG","FLG2","FLT3LG","FMOD","FN1","FNDC1","FNDC7","FNDC8",
+                                    "FRAS1","FREM1","FREM2","FREM3","FRZB","FST","FSTL1","FSTL3","GAS6","GDF1","GDF10","GDF11","GDF15","GDF2","GDF3","GDF5","GDF6","GDF7","GDF9","GDNF","GH1","GH2","GLDN","GPC1","GPC2","GPC3","GPC4","GPC5","GPC6","GREM1","GRIFIN","HABP2","HAPLN1","HAPLN2","HAPLN3","HAPLN4","HBEGF","HCFC1","HCFC2","HGF","HGFAC","HHIP","HMCN1","HMCN2","HMSD","HPSE","HPSE2","HPX","HRG","HRNR","HSPG2","HTRA1","HTRA3","HTRA4","HYAL1","HYAL2","HYAL3","HYAL4","IBSP","IFNA1","IFNA10","IFNA13","IFNA14","IFNA16","IFNA17","IFNA2","IFNA21","IFNA4","IFNA5","IFNA6","IFNA7","IFNA8","IFNB1","IFNE","IFNG","IFNK","IFNW1","IGF1","IGF2","IGFALS","IGFBP1","IGFBP2","IGFBP3","IGFBP4","IGFBP5","IGFBP6","IGFBP7","IGFBPL1","IGSF10","IHH","IL10","IL11","IL12A","IL12B","IL13","IL15","IL16","IL17A","IL17B","IL17C","IL17D","IL17F","IL18","IL19","IL1A","IL1B","IL1F10","IL1RN","IL2","IL20","IL22","IL23A","IL24","IL25","IL26","IL3","IL34",
+                                    "IL36A","IL36B","IL36G","IL36RN","IL37","IL4","IL5","IL6","IL7","IL9","IMPG1","IMPG2","INHA","INHBA","INHBB","INHBC","INHBE","INS","INS-IGF2","INSL3","INSL5","INSL6","INTS14","INTS6L","ISM1","ISM2","ITIH1","ITIH2","ITIH3","ITIH4","ITIH5","ITIH6","ITLN1","ITLN2","KAZALD1","KCP","KERA","KITLG","KNG1","KY","LAMA1","LAMA2","LAMA3","LAMA4","LAMA5","LAMB1","LAMB2","LAMB3","LAMB4","LAMC1","LAMC2","LAMC3","LEFTY1","LEFTY2","LEP","LGALS1","LGALS12","LGALS13","LGALS14","LGALS16","LGALS2","LGALS3","LGALS4","LGALS7","LGALS8","LGALS9","LGALS9B","LGALS9C","LGALSL","LGI1","LGI2","LGI3","LGI4","LIF","LMAN1","LMAN1L","LOX","LOXL1","LOXL2","LOXL3","LOXL4","LPA","LRG1","LTA","LTB","LTBP1","LTBP2","LTBP3","LTBP4","LUM","MASP1","MASP2","MATN1","MATN2","MATN3","MATN4","MBL2","MDK","MEGF10","MEGF11","MEGF6","MEGF8","MEGF9","MEP1A","MEP1B","MEPE","MFAP1","MFAP2","MFAP3","MFAP4","MFAP5","MFGE8","MGP","MMP1","MMP10","MMP11","MMP12","MMP13","MMP14","MMP15","MMP16","MMP17","MMP19","MMP2","MMP20","MMP21","MMP23B","MMP24","MMP25","MMP26","MMP27","MMP28","MMP3","MMP7","MMP8","MMP9","MMRN1","MMRN2","MST1","MST1L","MSTN","MUC1","MUC12","MUC13","MUC15","MUC16","MUC17","MUC19","MUC2","MUC20","MUC21","MUC22","MUC3A","MUC4","MUC5AC","MUC5B","MUC6","MUC7","MUCL1","MXRA5","NCAN","NDNF","NELL1","NELL2","NGF","NGLY1","NID1","NID2","NODAL","NPNT","NRG1","NRG2","NRG3","NRG4","NRTN","NTF3","NTF4","NTN1","NTN3","NTN4","NTN5","NTNG1","NTNG2","NYX","OGFOD1","OGFOD2","OGN","OIT3","OMD","OPRPN","OPTC","OSM","OTOG","OTOL1","OVGP1","P3H1","P3H2","P3H3","P4HA1","P4HA2","P4HA3","P4HTM","PAMR1","PAPLN","PAPPA","PAPPA2","PARM1","PCOLCE","PCOLCE2","PCSK5","PCSK6","PDGFA","PDGFB","PDGFC","PDGFD","PF4","PF4V1","PGF","PI3","PIK3IP1","PLAT","PLAU","PLG","PLOD1","PLOD2","PLOD3","PLXDC1","PLXDC2","PLXNA1","PLXNA2","PLXNA3","PLXNA4","PLXNB1","PLXNB2","PLXNB3","PLXNC1","PLXND1","PODN","PODNL1","POMZP3","POSTN","PPBP","PRELP","PRG2","PRG3","PRG4","PRL","PRSS1","PRSS12","PRSS2","PRSS3","PSPN","PTN","PXDN","PXDNL","PZP","REG1A","REG1B","REG3A","REG3G","REG4","RELN","RPTN","RSPO1","RSPO2","RSPO3","RSPO4","S100A1","S100A10","S100A11","S100A12","S100A13","S100A14","S100A16","S100A2","S100A3","S100A4","S100A5","S100A6","S100A7","S100A7A","S100A7L2","S100A8","S100A9","S100B","S100G","S100P","S100Z","SBSPON","SCUBE1","SCUBE2","SCUBE3","SDC1","SDC2","SDC3","SDC4","SEMA3A","SEMA3B","SEMA3C","SEMA3D","SEMA3E","SEMA3F","SEMA3G","SEMA4A","SEMA4B","SEMA4C","SEMA4D","SEMA4F","SEMA4G","SEMA5A","SEMA5B","SEMA6A","SEMA6B","SEMA6C","SEMA6D","SEMA7A","SERPINA1","SERPINA10","SERPINA11","SERPINA12","SERPINA2","SERPINA3","SERPINA4","SERPINA5","SERPINA6","SERPINA7","SERPINA9","SERPINB1","SERPINB10","SERPINB11","SERPINB12","SERPINB13","SERPINB2","SERPINB3","SERPINB4","SERPINB5","SERPINB6","SERPINB7","SERPINB8","SERPINB9","SERPINC1","SERPIND1","SERPINE1","SERPINE2","SERPINE3","SERPINF1","SERPINF2","SERPING1","SERPINH1","SERPINI1","SERPINI2","SFRP1","SFRP2","SFRP4","SFRP5","SFTA2","SFTA3","SFTPA1","SFTPA2","SFTPB","SFTPC","SFTPD","SHH","SLIT1","SLIT2","SLIT3","SLPI","SMOC1","SMOC2","SNED1","SPAM1","SPARC","SPARCL1","SPOCK1","SPOCK2","SPOCK3","SPON1","SPON2","SPP1","SRGN","SRPX","SRPX2","SSPOP","ST14","SULF1","SULF2","SVEP1","TCHH","TCHHL1","TDGF1","TECTA","TECTB","TGFA","TGFB1","TGFB2","TGFB3","TGFBI","TGM1","TGM2","TGM3","TGM4","TGM5","TGM6","TGM7","THBS1","THBS2","THBS3","THBS4","THPO","THSD4","TIMP1","TIMP2","TIMP3","TIMP4","TINAG","TINAGL1","TLL1","TLL2","TMPRSS15","TNC","TNF","TNFAIP6","TNFSF10","TNFSF11","TNFSF12","TNFSF13","TNFSF13B","TNFSF14","TNFSF15","TNFSF18","TNFSF4","TNFSF8","TNFSF9","TNN","TNR","TNXB","TPO","TSKU","TSPEAR",
+                                    "USH2A","VCAN","VEGFA","VEGFB","VEGFC","VEGFD","VIT","VTN","VWA1","VWA2","VWA3A","VWA3B","VWA5A","VWA5B1","VWA5B2","VWA7","VWC2","VWC2L","VWCE","VWDE","VWF","WFIKKN1","WFIKKN2","WIF1","WNT1","WNT10A","WNT10B","WNT11","WNT16","WNT2","WNT2B","WNT3","WNT3A","WNT4","WNT5A","WNT5B","WNT6","WNT7A","WNT7B","WNT8A","WNT8B","WNT9A","WNT9B","XCL1","XCL2","ZFP91","ZP1","ZP2","ZP3","ZP4","ZPLD1"))
+NABA_MATRISOME_ECM_features_df <- as.data.frame(NABA_MATRISOME_ECM_features)
+colnames(NABA_MATRISOME_ECM_features_df) <- "V1"  
+length(NABA_MATRISOME_ECM_features_df$V1)
+ECM_not_in_gene_metadata <- NABA_MATRISOME_ECM_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix_duct))]
+ECM_in_gene_metadata <- NABA_MATRISOME_ECM_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+Jackie_Wnt_features <- list(c("WNT1","WNT10A","WNT10B","WNT11","WNT16","WNT2","WNT2B","WNT3","WNT3A","WNT4","WNT5A","WNT5B","WNT6","WNT7A","WNT7B","WNT8A","WNT8B","WNT9A","WNT9B","APC","APC2","AXIN1","AXIN2","BTRC","CACYBP","CAMK2A","CAMK2B","CAMK2D","CAMK2G","CCND1","CCND2","CCND3","CER1","CHD8","CHP1","CHP2","CREBBP","CSNK1A1","CSNK1A1L","CSNK1E","CSNK2A1","CSNK2A2","CSNK2B","CTBP1","CTBP2","CTNNB1","CTNNBIP1","CUL1","CXXC4","DAAM1","DAAM2","DKK1","DKK2","DKK4","DVL1","DVL2","DVL3","EP300","FBXW11","FOSL1","FRAT1","FRAT2","FZD1","FZD10","FZD2","FZD3","FZD4","FZD5","FZD6","FZD7","FZD8","FZD9","GSK3B","JUN","LEF1","LRP5","LRP6","MAP3K7","MAPK10","MAPK8","MAPK9","MMP7","MYC","NFAT5","NFATC1","NFATC2","NFATC3","NFATC4","NKD1","NKD2","NLK","PLCB1","PLCB2","PLCB3","PLCB4","PORCN","PPARD","PPP2CA","PPP2CB","PPP2R1A","PPP2R1B","PPP2R5A","PPP2R5B","PPP2R5C","PPP2R5D","PPP2R5E","PPP3CA","PPP3CB","PPP3CC","PPP3R1","PPP3R2","PRICKLE1","PRICKLE2","PRKACA","PRKACB","PRKACG","PRKCA","PRKCB","PRKCG","PRKX","PSEN1","RAC1","RAC2","RAC3","RBX1","RHOA","ROCK1","ROCK2","RUVBL1","SENP2","SFRP1","SFRP2","SFRP4","SFRP5","SIAH1","SKP1","SKP1P2","SMAD2","SMAD3","SMAD4","SOX17","TBL1X","TBL1XR1","TBL1Y","TCF7","TCF7L1","TCF7L2","TP53","VANGL1","VANGL2","WIF1"))
+Jackie_Wnt_features_df <- as.data.frame(Jackie_Wnt_features)
+colnames(Jackie_Wnt_features_df) <- "V1"
+length(Jackie_Wnt_features_df$V1)
+Wnt_not_in_gene_metadata <- Jackie_Wnt_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix_duct))]
+Wnt_in_gene_metadata <- Jackie_Wnt_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+Gen_RA_features <- list(c("AANAT","ABCB1","ABL1","ACTA1","ACTA2","ADAMTS5","ADCYAP1","ADCYAP1R1","AKAP12","AKR1C3","ALDH1A1","ALPI","AMBP","APP","AR","ASCL1","ASCL2","B3GNT5","BCL2","BIRC5","BMP2","BMP4","BST1","CA2","CALB1","CAMK2A","CAMK2D","CAMKK1","CASP1","CASP3","CCNE1","CD164","CD44","CD58","CD59","CDH1","CDH2","CDH3","CDH6","CDKN1A","CHGA","CHGB","CLTA","CNTFR","CNTN1","COL3A1","COL4A2","CR1","CSF1","CTSB","CYBB","CYP1A1","CYP4F2","DAB2","DAG1","DBX1","DBX2","DCT","DDX1","DDX17","DIO1","DIO3","DPYSL3","DSC2","DSC3","DSG3","EMP1","ERBB2","ERBB3","ERBB4","EVX1","F3","FCER2","FGF5","FGF9","FGFR2","FGFR3","FGFR4","FGR","FKBP1A","FOLR2","FOS","FOXA2","FSHR","FUT4","FXYD3","FYN","GAP43","GATA2","GATA4","GATA6","GCK","GFRA1","GFRA1","GJB3","GRASP","GRP","HCK","HNF4A","HOXC5","HOXD10","HOXD11","HOXD13","HSD11B2","ICAM1","ICAM3","IGF1R","IGFBP2","IGFBP3","IGFBP5","IL6","IL6R","INHBA","INS","ITGAL","ITGAM","ITGAV","ITGB2","ITGB4","JUN","JUNB","KCNH2","KLK7","KRT10","KRT13","KRT14","KRT16","KRT17","KRT3","KRT6A","KRT7","LAPTM5","LEP","LGALS1","LGALS3","LGALS7","LOR","LPA","LTF","MAPK1","MAX","MC1R","MEOX1","MME","MMP13","MMP2","MSX1","MSX2","MT3","MUC2","MUC5B","MYBL2","MYCL1","NCF2","NDRG1","NME1","NOS1","NOS2","NOS3","NOTCH1","NPY","NR3C1","NR4A2","NR6A1","NTRK2","NTRK3","OLR1","PDGFRB","PECAM1","PLAU","POU4F2","POU5F1","PPP3CA","PPP3CB","PRLR","PRNP","PTEN","PTGDS","PTGS1","PTGS2","PTH","PTK2","PTMA","PTPN13","RAI2","RARRES1","RARRES2","RBP2","RET","RHO","RNPEP","RTN1","RTN3","RXRA","S100A8","SAG","SCD","SDC2","SELL","SERPINC1","SERPINE1","SFTPC","SLC18A3","SLC2A2","SOD2","SOX9","SP100","SPARC","SPN","SPRR1B","SULT2B1","SUPT4H1","TAT","TFAP2A","TFRC","TGFA","TGFB1","TGFB2","TGM1","TH","THRSP","TNC","TOP2A","TRPM2","TSHB","TYR","UCP2","VDR","VEGFC","VIM","VIPR1","WNT1","WNT3A","WT1","ADAMTS4","AFP","AHR","ARHGAP5","ARNT","ATP1A3","BGLAP","BMP7","BTK","CCND3","COL1A1","COL1A2","COL4A1","COL7A1","CP","CRH","CSF1R","CTNNB1","CTSD","CTSG","CYP7A1","EDN1","ENPP2","EVX2","FASN","FBP1","FGF1","FGF2","FGF3","FGF4","FOSL1","FSCN2","GJA1","GRIN1","GRN","GSC","GSTA4","H19","HGF","HOXA5","IBSP","IFNG","IGF2","IGFBP4","IHH","IL12B","IL2","IL8","ITGA8","ITGB5","ITGB7","IVL","KPNA2","KRT1","KRT18","KRT19","KRT4","KRT8","LDHB","LEF1","LMNA","LPL","MBP","MMP1","MMP3","MMP9","MPO","MST1","MUC4","MYB","NPPA","NPY1R","NR2F1","NR2F2","NR4A1","NRGN","NTRK1","OAS3","ODC1","OPRD1","OPRK1","OPRM1","OTX2","PDGFA","PDGFRA","PITX2","PPARA","PPARG","PTHLH","RANBP1","RB1","RBBP7","RXRG","SERPINH1","SHMT1","SLA","SLC27A1","SLC2A3","SLC9A1","SLC9A2","SOD1","TERT","TIMP1","TRH","VCAM1","VIP","ZFP42","CD38","CDX1","CEBPE","CRABP2","CRYAB","DRD2","EGR1","ETS1","FOXA1","H1F0","HOXA1","HOXA4","HOXB1","HOXB4","HOXD4","HSD17B1","IL2RA","PCK1","RARA","RARB","RARG","RBP1","SFTPB","TGM2","UCP1","ABCC2","ACADM","ADRB1","APOA1","APOA2","APOC3","APOD","ASMT","BIRC3","CDKN2B","CETP","CFH","CHAT","CRABP1","CSH1","CTSK","EFNB1","EGFR","EPO","FBP2","FOLR1","GBX2","GDF5","GH1","GNRH1","GPX2","GSTP1","HSD17B2","IGF1","IGFBP6","IL1A","IL1B","IL2RB","IRF1","ITGB3","KRT5","LHX1","LYN","MCL1","MDK","MEIS1","MGP","MMP11","MYC","MYCN","NCF1","NES","NGFR","NR2C1","NR2C2","NR4A3","NRD1","NRIP1","OXT","PCP2","PIK3CG","PLAT","PTAFR","RARRES3","RBP4","RUNX3","S100A7","SERPINB2","SFTPA1","SHH","SLC10A1","SLC5A5","SPP1","SREBF1","STAR","STAT1","STRA13","STRA6","STRA8","STS","TGFB3","TGFBR1","TGFBR2","THBD","UCP3"))
+Gen_RA_features_df <- as.data.frame(Gen_RA_features)
+colnames(Gen_RA_features_df) <- "V1"
+length(Gen_RA_features_df$V1)
+RA_not_in_gene_metadata <- Gen_RA_features_df %>% pull(V1) %>% .[!. %in% rownames(count_matrix_duct)]
+RA_in_gene_metadata <- Gen_RA_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+Jackie_Hedgehog_features <- list(c("BMP2","BMP4","BMP5","BMP6","BMP7","BMP8A","BMP8B","BTRC","CSNK1A1","CSNK1A1L","CSNK1D","CSNK1","CSNK1G1","CSNK1G2","CSNK1G3","DHH","FBXW11","GAS1","GLI1","GLI2","GLI3","GSK3B","HHIP","IHH","LRP2","PRKACA","PRKACB","PRKACG","PRKX","PTCH1","PTCH2","RAB23","SHH","SMO","STK36","SUFU","WNT1","WNT10A","WNT10B","WNT11","WNT16","WNT2","NT2B","WNT3","WNT3A","WNT4","WNT5A","WNT5B","WNT6","WNT7A","WNT7B","WNT8A","WNT8B","WNT9A","WNT9B","ZIC2"))
+Jackie_Hedgehog_features_df <- as.data.frame(Jackie_Hedgehog_features)
+colnames(Jackie_Hedgehog_features_df) <- "V1"
+length(Jackie_Hedgehog_features_df$V1)
+Hedgehog_not_in_gene_metadata <- Jackie_Hedgehog_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix_duct))]
+Hedgehog_in_gene_metadata <- Jackie_Hedgehog_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+Jackie_JAK_STAT_features <- list(c("AKT1","AKT2","AKT3","BCL2L1","CBL","CBLB","CBLC","CCND1","CCND2","CCND3","CISH","CLCF1","CNTF","CNTFR","CREBBP","CRLF2","CSF2","CSF2RA","CSF2RB","CSF3","CSF3R","CSH1","CTF1","EP300","EPO","EPOR","GH1","GH2","GHR","GRB2","IFNA1","IFNA10","IFNA13","IFNA14","IFNA16","IFNA17","IFNA2","IFNA21","IFNA4","IFNA5","IFNA6","IFNA7","IFNA8","IFNAR1","IFNAR2","IFNB1","IFNE","IFNG","IFNGR1","IFNGR2","IFNK","IFNL1","IFNL2","IFNL3","IFNLR1","IFNW1","IL10","IL10RA","IL10RB","IL11","IL11RA","IL12A","IL12B","IL12RB1","IL12RB2","IL13","IL13RA1","IL13RA2","IL15","IL15RA","IL19","IL2","IL20","IL20RA","IL20RB","IL21","L21R","IL22","IL22RA1","IL22RA2","IL23A","IL23R","IL24","IL26","IL2RA","IL2RB","IL2RG","IL3","IL3RA","IL4","IL4R","IL5","IL5RA","IL6","IL6R","IL6ST","IL7","IL7R","IL9","IL9R","IRF9","JAK1","JAK2","JAK3","LEP","LEPR","LIF","LIFR","MPL","MYC","OSM","OSMR","PIAS1","PIAS2","PIAS3","PIAS4","PIK3CA","PIK3CB","PIK3CD","PIK3CG","PIK3R1","PIK3R2","PIK3R3","PIK3R5","PIM1","PRL","PRLR","PTPN11","PTPN6","SOCS1","SOCS2","SOCS3","SOCS4","SOCS5","SOCS7","SOS1","SOS2","SPRED1","SPRED2","SPRY1","SPRY2","SPRY3","SPRY4","STAM","STAM2","STAT1","STAT2","STAT3","STAT4","STAT5A","STAT5B","STAT6","TPO","TSLP","TYK2"))
+Jackie_JAK_STAT_features_df <- as.data.frame(Jackie_JAK_STAT_features)
+colnames(Jackie_JAK_STAT_features_df) <- "V1"
+length(Jackie_JAK_STAT_features_df$V1)
+JAK_STAT_not_in_gene_metadata <- Jackie_JAK_STAT_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix_duct))]
+JAK_STAT_in_gene_metadata <- Jackie_JAK_STAT_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix_duct)]
+
+# gene set scores
+sobj_duct <- AddModuleScore(object = sobj_duct,features = Moffitt_classical_features,name = "Classical")
+sobj_duct <- AddModuleScore(object = sobj_duct,features = Moffitt_basal_features,name = "Basal")
+sobj_duct <- AddModuleScore(object = sobj_duct,features = Puram_pEMT_features,name = "pEMT")
+sobj_duct <- AddModuleScore(object = sobj_duct,features = NABA_MATRISOME_ECM_features,name= "ECM")
+sobj_duct <- AddModuleScore(object = sobj_duct,features = Jackie_Wnt_features,name= "Wnt")
+sobj_duct <- AddModuleScore(object = sobj_duct,features = Gen_RA_features,name= "RA")
+sobj_duct <- AddModuleScore(object = sobj_duct,features = Jackie_Hedgehog_features,name= "Hedgehog")
+sobj_duct <- AddModuleScore(object = sobj_duct,features = Jackie_JAK_STAT_features,name= "JAK_STAT")
+
+##### order cells according to resolution-4 clusters
+cds_duct_clusters_4 <- as.data.frame(cbind(colData(cds_duct)@rownames,colData(cds_duct)$T_duct_cluster_resolution_4))
+colnames(cds_duct_clusters_4) <- c("rownames","cds_duct_clusters")
+cds_duct_clusters_4 <- cds_duct_clusters_4[order(cds_duct_clusters_4$cds_duct_clusters),]
+
+classical_4 <- select(sobj_duct@meta.data,20)
+classical_4 <- cbind(rownames(classical_4),classical_4)
+colnames(classical_4) <- c("rownames","Classical1")
+classical_4 <- classical_4[order(match(classical_4$rownames,cds_duct_clusters_4$rownames)),]
+
+basal_4 <- select(sobj_duct@meta.data,22)
+basal_4 <- cbind(rownames(basal_4),basal_4)
+colnames(basal_4) <- c("rownames","Basal1")
+basal_4 <- basal_4[order(match(basal_4$rownames,cds_duct_clusters_4$rownames)),]
+
+pEMT_4 <- select(sobj_duct@meta.data,24)
+pEMT_4 <- cbind(rownames(pEMT_4),pEMT_4)
+colnames(pEMT_4) <- c("rownames","pEMT1")
+pEMT_4 <- pEMT_4[order(match(pEMT_4$rownames,cds_duct_clusters_4$rownames)),]
+
+ECM_4 <- select(sobj_duct@meta.data,26)
+ECM_4 <- cbind(rownames(ECM_4),ECM_4)
+colnames(ECM_4) <- c("rownames","ECM1")
+ECM_4 <- ECM_4[order(match(ECM_4$rownames,cds_duct_clusters_4$rownames)),]
+
+Wnt_4 <- select(sobj_duct@meta.data,28)
+Wnt_4 <- cbind(rownames(Wnt_4),Wnt_4)
+colnames(Wnt_4) <- c("rownames","Wnt1")
+Wnt_4 <- Wnt_4[order(match(Wnt_4$rownames,cds_duct_clusters_4$rownames)),]
+
+RA_4 <- select(sobj_duct@meta.data,30)
+RA_4 <- cbind(rownames(RA_4),RA_4)
+colnames(RA_4) <- c("rownames","RA1")
+RA_4 <- RA_4[order(match(RA_4$rownames,cds_duct_clusters_4$rownames)),]
+
+Hedgehog_4 <- select(sobj_duct@meta.data,32)
+Hedgehog_4 <- cbind(rownames(Hedgehog_4),Hedgehog_4)
+colnames(Hedgehog_4) <- c("rownames","Hedgehog1")
+Hedgehog_4 <- Hedgehog_4[order(match(Hedgehog_4$rownames,cds_duct_clusters_4$rownames)),]
+
+JAK_STAT_4 <- select(sobj_duct@meta.data,34)
+JAK_STAT_4 <- cbind(rownames(JAK_STAT_4),JAK_STAT_4)
+colnames(JAK_STAT_4) <- c("rownames","JAK_STAT1")
+JAK_STAT_4 <- JAK_STAT_4[order(match(JAK_STAT_4$rownames,cds_duct_clusters_4$rownames)),]
+
+# check same order between objects
+table(rownames(basal_4) == rownames(classical_4))
+table(rownames(basal_4) == cds_duct_clusters_4$rownames)
+table(rownames(basal_4) == rownames(pEMT_4))
+table(rownames(basal_4) == rownames(ECM_4))
+table(rownames(basal_4) == rownames(Wnt_4))
+table(rownames(basal_4) == rownames(RA_4))
+table(rownames(basal_4) == rownames(Hedgehog_4))
+table(rownames(basal_4) == rownames(JAK_STAT_4))
+
+# scale ModuleScores
+classical_4$Classical1 <- scale(classical_4$Classical1, center=FALSE)
+basal_4$Basal1 <- scale(basal_4$Basal1, center=FALSE)
+pEMT_4$pEMT1 <- scale(pEMT_4$pEMT1, center=FALSE)
+ECM_4$ECM1 <- scale(ECM_4$ECM1, center=FALSE)
+Wnt_4$Wnt1 <- scale(Wnt_4$Wnt1, center=FALSE)
+RA_4$RA1 <- scale(RA_4$RA1, center=FALSE)
+Hedgehog_4$Hedgehog1 <- scale(Hedgehog_4$Hedgehog1, center=FALSE)
+JAK_STAT_4$JAK_STAT1 <- scale(JAK_STAT_4$JAK_STAT1, center=FALSE)
+
+### sort by pEMT ModuleScore
+pEMT_sort_pEMT <- pEMT_4[order(pEMT_4$pEMT1, decreasing=TRUE),]
+classical_sort_pEMT <- classical_4[order(match(classical_4$rownames,pEMT_sort_pEMT$rownames)),]
+basal_sort_pEMT <- basal_4[order(match(basal_4$rownames,pEMT_sort_pEMT$rownames)),]
+ECM_sort_pEMT <- ECM_4[order(match(ECM_4$rownames,pEMT_sort_pEMT$rownames)),]
+Wnt_sort_pEMT <- Wnt_4[order(match(Wnt_4$rownames,pEMT_sort_pEMT$rownames)),]
+RA_sort_pEMT <- RA_4[order(match(RA_4$rownames,pEMT_sort_pEMT$rownames)),]
+Hedgehog_sort_pEMT <- Hedgehog_4[order(match(Hedgehog_4$rownames,pEMT_sort_pEMT$rownames)),]
+JAK_STAT_sort_pEMT <- JAK_STAT_4[order(match(JAK_STAT_4$rownames,pEMT_sort_pEMT$rownames)),]
+
+# check same order between objects
+table(rownames(classical_sort_pEMT) == rownames(basal_sort_pEMT))
+table(rownames(classical_sort_pEMT) == rownames(pEMT_sort_pEMT))
+table(rownames(classical_sort_pEMT) == rownames(ECM_sort_pEMT))
+table(rownames(classical_sort_pEMT) == rownames(Wnt_sort_pEMT))
+table(rownames(classical_sort_pEMT) == rownames(RA_sort_pEMT))
+table(rownames(classical_sort_pEMT) == rownames(Hedgehog_sort_pEMT))
+table(rownames(classical_sort_pEMT) == rownames(JAK_STAT_sort_pEMT))
+
+# plot gene set scores
+col_fun = colorRamp2(c(-3, 0, 3), c("blue", "white", "red"))
+colorBar_classical_sort_pEMT <- HeatmapAnnotation(Value=classical_sort_pEMT$Classical1,
+                              col = list(Value=col_fun))
+colorBar_basal_sort_pEMT <- HeatmapAnnotation(Value=basal_sort_pEMT$Basal1,
+                              col = list(Value=col_fun))
+colorBar_white <- HeatmapAnnotation(Value=white$white,
+                              col = list(Value=col_fun))
+colorBar_pEMT_sort_pEMT <- HeatmapAnnotation(Value=pEMT_sort_pEMT$pEMT1,
+                              col = list(Value=col_fun))
+colorBar_ECM_sort_pEMT <- HeatmapAnnotation(Value=ECM_sort_pEMT$ECM1,
+                              col = list(Value=col_fun))
+colorBar_Wnt_sort_pEMT <- HeatmapAnnotation(Value=Wnt_sort_pEMT$Wnt1,
+                              col = list(Value=col_fun))
+colorBar_RA_sort_pEMT <- HeatmapAnnotation(Value=RA_sort_pEMT$RA1,
+                              col = list(Value=col_fun))
+colorBar_Hedgehog_sort_pEMT <- HeatmapAnnotation(Value=Hedgehog_sort_pEMT$Hedgehog1,
+                              col = list(Value=col_fun))
+colorBar_JAK_STAT_sort_pEMT <- HeatmapAnnotation(Value=JAK_STAT_sort_pEMT$JAK_STAT1,
+                              col = list(Value=col_fun))
+#draw(c(colorBar_classical_sort_pEMT,colorBar_basal_sort_pEMT,colorBar_white,colorBar_pEMT_sort_pEMT,colorBar_ECM_sort_pEMT,colorBar_Wnt_sort_pEMT,colorBar_RA_sort_pEMT,colorBar_Hedgehog_sort_pEMT,colorBar_JAK_STAT_sort_pEMT))
+draw(c(colorBar_classical_sort_pEMT,colorBar_basal_sort_pEMT,colorBar_pEMT_sort_pEMT,colorBar_white,colorBar_Wnt_sort_pEMT))
+
+explore_duct <- data.frame(colData(cds_T_duct))
+explore_duct <- mutate(explore_duct, "Classifier_T_duct" = ifelse(Classical_scaled > 0 & Basal_scaled > 0, "dual_positive", ifelse(Classical_scaled > 0 & Basal_scaled < 0, "Classical", ifelse(Classical_scaled < 0 & Basal_scaled > 0, "Basal", ifelse(Classical_scaled < 0 & Basal_scaled < 0, "dual_negative", NA)))))
+colData(cds_T_duct)[["Classifier_T_duct"]] <- explore_duct$Classifier
+
+saveRDS(cds_T_duct, "cds_T_duct_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(6).rds")
+
+
+
+
+
+### 7/28/2021, Module Scores for CAF only (without quiescent stellate)
+cds_T_CAF <- readRDS("cds_T_CAF_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(4).rds") 
+#15002 cells
+cell_metadata_T_CAF <- data.frame(colData(cds_T_CAF))
+plot_cells(cds_T_CAF, color_cells_by = "T_cluster_resolution_5", show_trajectory_graph = FALSE, label_cell_groups = FALSE)
+table(colData(cds_T_CAF)$T_cluster_resolution_5)
+cds_T_CAF_only <- cds_T_CAF[,colData(cds_T_CAF)$T_assigned_cell_type == "Fibroblast"]
+
+gene_metadata <- data.frame(cds_T_CAF_only@rowRanges@elementMetadata@listData)
+count_matrix <- assay(cds_T_CAF_only)
+count_matrix@Dimnames[[1]] <- cds_T_CAF_only@rowRanges@elementMetadata@listData[["gene_short_name"]]
+cell_metadata <- data.frame(colData(cds_T_CAF_only)@listData)
+
+sobj_T_CAF_only <- CreateSeuratObject(counts = count_matrix, meta.data = cell_metadata)
+sobj_T_CAF_only <- NormalizeData(sobj_T_CAF_only)
+sobj_T_CAF_only <- FindVariableFeatures(sobj_T_CAF_only)
+sobj_T_CAF_only <- ScaleData(sobj_T_CAF_only, vars.to.regress = "manuscript")
+sobj_T_CAF_only <- RunPCA(sobj_T_CAF_only, features = VariableFeatures(object = sobj_T_CAF_only))
+
+myCAF_markers <- list(c("ACTA2", "TAGLN", "MYL9", "TPM2", "MMP11", "POSTN", "HOPX", "TWIST1", "SOX4"))
+myCAF_markers_df <- data.frame(myCAF_markers)
+colnames(myCAF_markers_df) <- "V1"
+length(myCAF_markers_df$V1)
+myCAF_not_in_gene_metadata <- myCAF_markers_df %>% pull(V1) %>% .[!. %in% gene_metadata$gene_short_name]
+myCAF_in_gene_metadata <- myCAF_markers_df %>% pull(V1) %>% .[. %in% gene_metadata$gene_short_name]
+
+iCAF_markers <- list(c("CXCL1", "CXCL2", "CCL2", "CXCL12", "PDGFRA", "CFD", "LMNA", "DPT", "HAS1", "HAS2"))
+iCAF_markers_df <- as.data.frame(iCAF_markers)
+colnames(iCAF_markers_df) <- "V1"
+length(iCAF_markers_df$V1)
+iCAF_not_in_gene_metadata <- iCAF_markers_df %>% pull(V1) %>% .[!. %in% gene_metadata$gene_short_name]
+iCAF_in_gene_metadata <- iCAF_markers_df %>% pull(V1) %>% .[. %in% gene_metadata$gene_short_name]
+
+sobj_T_CAF_only <- AddModuleScore(object = sobj_T_CAF_only,features = myCAF_markers,name = "myCAF")
+sobj_T_CAF_only <- AddModuleScore(object = sobj_T_CAF_only,features = iCAF_markers,name = "iCAF")
+
+myCAF <- select(sobj_T_CAF_only@meta.data,35)
+myCAF <- cbind(rownames(myCAF),myCAF)
+colnames(myCAF) <- c("rownames","myCAF1")
+
+iCAF <- select(sobj_T_CAF_only@meta.data,36)
+iCAF <- cbind(rownames(iCAF),iCAF)
+colnames(iCAF) <- c("rownames","iCAF1")
+
+myCAF$myCAF1 <- scale(myCAF$myCAF1, center=FALSE)
+iCAF$iCAF1 <- scale(iCAF$iCAF1, center=FALSE)
+table(rownames(myCAF) == rownames(iCAF))
+
+cell_metadata_T_CAF$rownames <- rownames(cell_metadata_T_CAF)
+
+merge_myCAF1 <- merge(cell_metadata_T_CAF[,c("rownames","myCAF")], myCAF[,c("rownames","myCAF1")], all.x = TRUE)
+merge_myCAF1 <- merge_myCAF1[order(match(merge_myCAF1$rownames, rownames(cell_metadata_T_CAF))),]
+table(rownames(cell_metadata_T_CAF) == merge_myCAF1$rownames)
+
+merge_iCAF1 <- merge(cell_metadata_T_CAF[,c("rownames","iCAF")], iCAF[,c("rownames","iCAF1")], all.x = TRUE)
+merge_iCAF1 <- merge_iCAF1[order(match(merge_iCAF1$rownames, rownames(cell_metadata_T_CAF))),]
+table(rownames(cell_metadata_T_CAF) == merge_iCAF1$rownames)
+
+table(merge_myCAF1$rownames == merge_iCAF1$rownames)
+str(merge_myCAF1)
+str(merge_iCAF1)
+
+colData(cds_T_CAF)[["myCAF_Fibroblast_only_scaled"]] <- merge_myCAF1$myCAF1
+colData(cds_T_CAF)[["iCAF_Fibroblast_only_scaled"]] <- merge_iCAF1$iCAF1
+
+explore <- data.frame(colData(cds_T_CAF))
+explore <- mutate(explore, "Classifier" = ifelse(myCAF_Fibroblast_only_scaled > 0 & iCAF_Fibroblast_only_scaled > 0, "dual_positive", ifelse(myCAF_Fibroblast_only_scaled > 0 & iCAF_Fibroblast_only_scaled < 0, "myCAF", ifelse(myCAF_Fibroblast_only_scaled < 0 & iCAF_Fibroblast_only_scaled > 0, "iCAF", ifelse(myCAF_Fibroblast_only_scaled < 0 & iCAF_Fibroblast_only_scaled < 0, "dual_negative", NA)))))
+colData(cds_T_CAF)[["Classifier_T_Fibroblast_only"]] <- explore$Classifier
+
+#15002 cells
+cell_metadata_T_CAF <- data.frame(colData(cds_T_CAF))
+plot_cells(cds_T_CAF, color_cells_by = "T_cluster_resolution_5", show_trajectory_graph = FALSE, label_cell_groups = FALSE)
+table(colData(cds_T_CAF)$T_cluster_resolution_5)
+cds_T_CAF_only <- cds_T_CAF[,colData(cds_T_CAF)$T_assigned_cell_type == "Fibroblast"]
+
+gene_metadata <- data.frame(cds_T_CAF_only@rowRanges@elementMetadata@listData)
+count_matrix <- assay(cds_T_CAF_only)
+count_matrix@Dimnames[[1]] <- cds_T_CAF_only@rowRanges@elementMetadata@listData[["gene_short_name"]]
+cell_metadata <- data.frame(colData(cds_T_CAF_only)@listData)
+
+library(Seurat)
+sobj_T_CAF_only <- CreateSeuratObject(counts = count_matrix, meta.data = cell_metadata)
+sobj_T_CAF_only <- NormalizeData(sobj_T_CAF_only)
+sobj_T_CAF_only <- FindVariableFeatures(sobj_T_CAF_only)
+sobj_T_CAF_only <- ScaleData(sobj_T_CAF_only, vars.to.regress = "manuscript")
+sobj_T_CAF_only <- RunPCA(sobj_T_CAF_only, features = VariableFeatures(object = sobj_T_CAF_only))
+
+library(dplyr)
+NABA_MATRISOME_ECM_features <- list(c("A2M","A2ML1","ABI3BP","ACAN","ADAM10","ADAM11","ADAM12","ADAM15","ADAM17","ADAM18","ADAM19","ADAM2","ADAM20","ADAM21","ADAM22","ADAM23","ADAM28","ADAM29","ADAM30","ADAM32","ADAM33","ADAM7","ADAM8","ADAM9","ADAMDEC1","ADAMTS1","ADAMTS10","ADAMTS12","ADAMTS13","ADAMTS14","ADAMTS15","ADAMTS16","ADAMTS17","ADAMTS18","ADAMTS19","ADAMTS2","ADAMTS20","ADAMTS3","ADAMTS4","ADAMTS5","ADAMTS6","ADAMTS7","ADAMTS8","ADAMTS9","ADAMTSL1","ADAMTSL2","ADAMTSL3","ADAMTSL4","ADAMTSL5","ADIPOQ","AEBP1","AGRN","AGT","AMBN","AMBP","AMELX","AMELY","AMH","ANGPT1","ANGPT2","ANGPT4","ANGPTL1","ANGPTL2","ANGPTL3","ANGPTL4","ANGPTL5","ANGPTL6","ANGPTL7","ANOS1","ANXA1","ANXA10","ANXA11","ANXA13","ANXA2","ANXA3","ANXA4","ANXA5","ANXA6","ANXA7","ANXA8","ANXA8L1","ANXA9","AREG","ARTN","ASPN","ASTL","BCAN","BDNF","BGLAP","BGN","BMP1","BMP10","BMP15","BMP2","BMP3","BMP4","BMP5","BMP6","BMP7","BMP8A","BMP8B","BMPER","BRINP2","BRINP3","BSPH1","BTC","C17orf58","C1QA","C1QB","C1QC","C1QL1","C1QL2","C1QL3","C1QL4","C1QTNF1","C1QTNF2","C1QTNF3","C1QTNF4","C1QTNF5","C1QTNF6","C1QTNF7","C1QTNF8","C1QTNF9","C1QTNF9B","CBLN1","CBLN2","CBLN3","CBLN4","CCBE1","CCL1","CCL11","CCL13","CCL14","CCL15","CCL16","CCL17","CCL18","CCL19","CCL2","CCL20","CCL21","CCL22","CCL23","CCL24","CCL25","CCL26","CCL27","CCL28","CCL3","CCL3L3","CCL4","CCL4L2","CCL5","CCL7","CCL8","CCN1","CCN2","CCN3","CCN4","CCN5","CCN6","CD109","CD209","CDCP2","CELA1","CELA2A","CELA2B","CELA3A","CELA3B","CFC1","CFC1B","CHAD","CHADL","CHRD","CHRDL1","CHRDL2","CILP","CILP2","CLC","CLCF1","CLEC10A","CLEC11A","CLEC12A","CLEC12B","CLEC14A","CLEC17A","CLEC18A","CLEC18B","CLEC18C","CLEC19A","CLEC1A","CLEC1B","CLEC2A","CLEC2B","CLEC2D","CLEC2L","CLEC3A","CLEC3B","CLEC4A","CLEC4C","CLEC4D","CLEC4E","CLEC4F","CLEC4G","CLEC4M","CLEC5A","CLEC6A","CLEC7A","CLEC9A","CNTF","COCH","COL10A1","COL11A1","COL11A2","COL12A1","COL13A1","COL14A1","COL15A1","COL16A1","COL17A1","COL18A1","COL19A1","COL1A1","COL1A2","COL20A1","COL21A1","COL22A1","COL23A1","COL24A1","COL25A1","COL26A1","COL27A1","COL28A1","COL2A1","COL3A1","COL4A1","COL4A2","COL4A3","COL4A4","COL4A5","COL4A6","COL5A1","COL5A2","COL5A3","COL6A1","COL6A2","COL6A3","COL6A5","COL6A6","COL7A1","COL8A1","COL8A2","COL9A1","COL9A2","COL9A3","COLEC10","COLEC11","COLEC12","COLQ","COMP","CPAMD8","CPN2","CRELD1","CRELD2","CRHBP","CRIM1","CRISPLD1","CRISPLD2","CRLF1","CRLF3","CRNN","CSF1","CSF2","CSF3","CSH1","CSH2","CSHL1","CSPG4","CSPG5","CST1","CST11","CST2","CST3","CST4","CST5","CST6","CST7","CST8","CST9","CST9L","CSTA","CSTB","CSTL1","CTF1","CTHRC1","CTSA","CTSB","CTSC","CTSD","CTSE","CTSF","CTSG","CTSH","CTSK","CTSL","CTSO","CTSS","CTSV","CTSW","CTSZ","CX3CL1","CXCL1","CXCL10","CXCL11","CXCL12","CXCL13","CXCL14","CXCL2","CXCL3","CXCL5","CXCL6","CXCL8","CXCL9","DCN","DHH","DMBT1","DMP1","DPT","DSPP","EBI3","ECM1","ECM2","EDA","EDIL3","EFEMP1","EFEMP2","EGF","EGFL6","EGFL7","EGFL8","EGFLAM","EGLN1","EGLN2","EGLN3","ELANE","ELFN1","ELFN2","ELN","ELSPBP1","EMCN","EMID1","EMILIN1","EMILIN2","EMILIN3","EPGN","EPO","EPYC","EREG","ESM1","EYS","F10","F12","F13A1","F13B","F2","F7","F9","FAM20A","FAM20B","FAM20C","FASLG","FBLN1","FBLN2","FBLN5","FBLN7","FBN1","FBN2","FBN3","FCN1","FCN2","FCN3","FGA","FGB","FGF1","FGF10","FGF11","FGF12","FGF13","FGF14","FGF16","FGF17","FGF18","FGF19","FGF2","FGF20","FGF21","FGF22","FGF23","FGF3","FGF4","FGF5","FGF6","FGF7","FGF8","FGF9","FGFBP1","FGFBP2","FGFBP3","FGG","FGL1","FGL2","FLG","FLG2","FLT3LG","FMOD","FN1","FNDC1","FNDC7","FNDC8",
+                                    "FRAS1","FREM1","FREM2","FREM3","FRZB","FST","FSTL1","FSTL3","GAS6","GDF1","GDF10","GDF11","GDF15","GDF2","GDF3","GDF5","GDF6","GDF7","GDF9","GDNF","GH1","GH2","GLDN","GPC1","GPC2","GPC3","GPC4","GPC5","GPC6","GREM1","GRIFIN","HABP2","HAPLN1","HAPLN2","HAPLN3","HAPLN4","HBEGF","HCFC1","HCFC2","HGF","HGFAC","HHIP","HMCN1","HMCN2","HMSD","HPSE","HPSE2","HPX","HRG","HRNR","HSPG2","HTRA1","HTRA3","HTRA4","HYAL1","HYAL2","HYAL3","HYAL4","IBSP","IFNA1","IFNA10","IFNA13","IFNA14","IFNA16","IFNA17","IFNA2","IFNA21","IFNA4","IFNA5","IFNA6","IFNA7","IFNA8","IFNB1","IFNE","IFNG","IFNK","IFNW1","IGF1","IGF2","IGFALS","IGFBP1","IGFBP2","IGFBP3","IGFBP4","IGFBP5","IGFBP6","IGFBP7","IGFBPL1","IGSF10","IHH","IL10","IL11","IL12A","IL12B","IL13","IL15","IL16","IL17A","IL17B","IL17C","IL17D","IL17F","IL18","IL19","IL1A","IL1B","IL1F10","IL1RN","IL2","IL20","IL22","IL23A","IL24","IL25","IL26","IL3","IL34",
+                                    "IL36A","IL36B","IL36G","IL36RN","IL37","IL4","IL5","IL6","IL7","IL9","IMPG1","IMPG2","INHA","INHBA","INHBB","INHBC","INHBE","INS","INS-IGF2","INSL3","INSL5","INSL6","INTS14","INTS6L","ISM1","ISM2","ITIH1","ITIH2","ITIH3","ITIH4","ITIH5","ITIH6","ITLN1","ITLN2","KAZALD1","KCP","KERA","KITLG","KNG1","KY","LAMA1","LAMA2","LAMA3","LAMA4","LAMA5","LAMB1","LAMB2","LAMB3","LAMB4","LAMC1","LAMC2","LAMC3","LEFTY1","LEFTY2","LEP","LGALS1","LGALS12","LGALS13","LGALS14","LGALS16","LGALS2","LGALS3","LGALS4","LGALS7","LGALS8","LGALS9","LGALS9B","LGALS9C","LGALSL","LGI1","LGI2","LGI3","LGI4","LIF","LMAN1","LMAN1L","LOX","LOXL1","LOXL2","LOXL3","LOXL4","LPA","LRG1","LTA","LTB","LTBP1","LTBP2","LTBP3","LTBP4","LUM","MASP1","MASP2","MATN1","MATN2","MATN3","MATN4","MBL2","MDK","MEGF10","MEGF11","MEGF6","MEGF8","MEGF9","MEP1A","MEP1B","MEPE","MFAP1","MFAP2","MFAP3","MFAP4","MFAP5","MFGE8","MGP","MMP1","MMP10","MMP11","MMP12","MMP13","MMP14","MMP15","MMP16","MMP17","MMP19","MMP2","MMP20","MMP21","MMP23B","MMP24","MMP25","MMP26","MMP27","MMP28","MMP3","MMP7","MMP8","MMP9","MMRN1","MMRN2","MST1","MST1L","MSTN","MUC1","MUC12","MUC13","MUC15","MUC16","MUC17","MUC19","MUC2","MUC20","MUC21","MUC22","MUC3A","MUC4","MUC5AC","MUC5B","MUC6","MUC7","MUCL1","MXRA5","NCAN","NDNF","NELL1","NELL2","NGF","NGLY1","NID1","NID2","NODAL","NPNT","NRG1","NRG2","NRG3","NRG4","NRTN","NTF3","NTF4","NTN1","NTN3","NTN4","NTN5","NTNG1","NTNG2","NYX","OGFOD1","OGFOD2","OGN","OIT3","OMD","OPRPN","OPTC","OSM","OTOG","OTOL1","OVGP1","P3H1","P3H2","P3H3","P4HA1","P4HA2","P4HA3","P4HTM","PAMR1","PAPLN","PAPPA","PAPPA2","PARM1","PCOLCE","PCOLCE2","PCSK5","PCSK6","PDGFA","PDGFB","PDGFC","PDGFD","PF4","PF4V1","PGF","PI3","PIK3IP1","PLAT","PLAU","PLG","PLOD1","PLOD2","PLOD3","PLXDC1","PLXDC2","PLXNA1","PLXNA2","PLXNA3","PLXNA4","PLXNB1","PLXNB2","PLXNB3","PLXNC1","PLXND1","PODN","PODNL1","POMZP3","POSTN","PPBP","PRELP","PRG2","PRG3","PRG4","PRL","PRSS1","PRSS12","PRSS2","PRSS3","PSPN","PTN","PXDN","PXDNL","PZP","REG1A","REG1B","REG3A","REG3G","REG4","RELN","RPTN","RSPO1","RSPO2","RSPO3","RSPO4","S100A1","S100A10","S100A11","S100A12","S100A13","S100A14","S100A16","S100A2","S100A3","S100A4","S100A5","S100A6","S100A7","S100A7A","S100A7L2","S100A8","S100A9","S100B","S100G","S100P","S100Z","SBSPON","SCUBE1","SCUBE2","SCUBE3","SDC1","SDC2","SDC3","SDC4","SEMA3A","SEMA3B","SEMA3C","SEMA3D","SEMA3E","SEMA3F","SEMA3G","SEMA4A","SEMA4B","SEMA4C","SEMA4D","SEMA4F","SEMA4G","SEMA5A","SEMA5B","SEMA6A","SEMA6B","SEMA6C","SEMA6D","SEMA7A","SERPINA1","SERPINA10","SERPINA11","SERPINA12","SERPINA2","SERPINA3","SERPINA4","SERPINA5","SERPINA6","SERPINA7","SERPINA9","SERPINB1","SERPINB10","SERPINB11","SERPINB12","SERPINB13","SERPINB2","SERPINB3","SERPINB4","SERPINB5","SERPINB6","SERPINB7","SERPINB8","SERPINB9","SERPINC1","SERPIND1","SERPINE1","SERPINE2","SERPINE3","SERPINF1","SERPINF2","SERPING1","SERPINH1","SERPINI1","SERPINI2","SFRP1","SFRP2","SFRP4","SFRP5","SFTA2","SFTA3","SFTPA1","SFTPA2","SFTPB","SFTPC","SFTPD","SHH","SLIT1","SLIT2","SLIT3","SLPI","SMOC1","SMOC2","SNED1","SPAM1","SPARC","SPARCL1","SPOCK1","SPOCK2","SPOCK3","SPON1","SPON2","SPP1","SRGN","SRPX","SRPX2","SSPOP","ST14","SULF1","SULF2","SVEP1","TCHH","TCHHL1","TDGF1","TECTA","TECTB","TGFA","TGFB1","TGFB2","TGFB3","TGFBI","TGM1","TGM2","TGM3","TGM4","TGM5","TGM6","TGM7","THBS1","THBS2","THBS3","THBS4","THPO","THSD4","TIMP1","TIMP2","TIMP3","TIMP4","TINAG","TINAGL1","TLL1","TLL2","TMPRSS15","TNC","TNF","TNFAIP6","TNFSF10","TNFSF11","TNFSF12","TNFSF13","TNFSF13B","TNFSF14","TNFSF15","TNFSF18","TNFSF4","TNFSF8","TNFSF9","TNN","TNR","TNXB","TPO","TSKU","TSPEAR",
+                                    "USH2A","VCAN","VEGFA","VEGFB","VEGFC","VEGFD","VIT","VTN","VWA1","VWA2","VWA3A","VWA3B","VWA5A","VWA5B1","VWA5B2","VWA7","VWC2","VWC2L","VWCE","VWDE","VWF","WFIKKN1","WFIKKN2","WIF1","WNT1","WNT10A","WNT10B","WNT11","WNT16","WNT2","WNT2B","WNT3","WNT3A","WNT4","WNT5A","WNT5B","WNT6","WNT7A","WNT7B","WNT8A","WNT8B","WNT9A","WNT9B","XCL1","XCL2","ZFP91","ZP1","ZP2","ZP3","ZP4","ZPLD1"))
+NABA_MATRISOME_ECM_features_df <- as.data.frame(NABA_MATRISOME_ECM_features)
+colnames(NABA_MATRISOME_ECM_features_df) <- "V1"  
+length(NABA_MATRISOME_ECM_features_df$V1)
+# ECM gene set 1026 features
+ECM_not_in_gene_metadata <- NABA_MATRISOME_ECM_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix))]
+# 222 ECM_not_in_gene_metadata
+ECM_in_gene_metadata <- NABA_MATRISOME_ECM_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix)]
+# 804 ECM_in_gene_metadata
+
+Jackie_Wnt_features <- list(c("WNT1","WNT10A","WNT10B","WNT11","WNT16","WNT2","WNT2B","WNT3","WNT3A","WNT4","WNT5A","WNT5B","WNT6","WNT7A","WNT7B","WNT8A","WNT8B","WNT9A","WNT9B","APC","APC2","AXIN1","AXIN2","BTRC","CACYBP","CAMK2A","CAMK2B","CAMK2D","CAMK2G","CCND1","CCND2","CCND3","CER1","CHD8","CHP1","CHP2","CREBBP","CSNK1A1","CSNK1A1L","CSNK1E","CSNK2A1","CSNK2A2","CSNK2B","CTBP1","CTBP2","CTNNB1","CTNNBIP1","CUL1","CXXC4","DAAM1","DAAM2","DKK1","DKK2","DKK4","DVL1","DVL2","DVL3","EP300","FBXW11","FOSL1","FRAT1","FRAT2","FZD1","FZD10","FZD2","FZD3","FZD4","FZD5","FZD6","FZD7","FZD8","FZD9","GSK3B","JUN","LEF1","LRP5","LRP6","MAP3K7","MAPK10","MAPK8","MAPK9","MMP7","MYC","NFAT5","NFATC1","NFATC2","NFATC3","NFATC4","NKD1","NKD2","NLK","PLCB1","PLCB2","PLCB3","PLCB4","PORCN","PPARD","PPP2CA","PPP2CB","PPP2R1A","PPP2R1B","PPP2R5A","PPP2R5B","PPP2R5C","PPP2R5D","PPP2R5E","PPP3CA","PPP3CB","PPP3CC","PPP3R1","PPP3R2","PRICKLE1","PRICKLE2","PRKACA","PRKACB","PRKACG","PRKCA","PRKCB","PRKCG","PRKX","PSEN1","RAC1","RAC2","RAC3","RBX1","RHOA","ROCK1","ROCK2","RUVBL1","SENP2","SFRP1","SFRP2","SFRP4","SFRP5","SIAH1","SKP1","SKP1P2","SMAD2","SMAD3","SMAD4","SOX17","TBL1X","TBL1XR1","TBL1Y","TCF7","TCF7L1","TCF7L2","TP53","VANGL1","VANGL2","WIF1"))
+Jackie_Wnt_features_df <- as.data.frame(Jackie_Wnt_features)
+colnames(Jackie_Wnt_features_df) <- "V1"
+length(Jackie_Wnt_features_df$V1)
+# Wnt gene set 151 features
+Wnt_not_in_gene_metadata <- Jackie_Wnt_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix))]
+# 9 Wnt_not_in_gene_metadata
+Wnt_in_gene_metadata <- Jackie_Wnt_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix)]
+# 142 Wnt_in_gene_metadata
+
+Gen_RA_features <- list(c("AANAT","ABCB1","ABL1","ACTA1","ACTA2","ADAMTS5","ADCYAP1","ADCYAP1R1","AKAP12","AKR1C3","ALDH1A1","ALPI","AMBP","APP","AR","ASCL1","ASCL2","B3GNT5","BCL2","BIRC5","BMP2","BMP4","BST1","CA2","CALB1","CAMK2A","CAMK2D","CAMKK1","CASP1","CASP3","CCNE1","CD164","CD44","CD58","CD59","CDH1","CDH2","CDH3","CDH6","CDKN1A","CHGA","CHGB","CLTA","CNTFR","CNTN1","COL3A1","COL4A2","CR1","CSF1","CTSB","CYBB","CYP1A1","CYP4F2","DAB2","DAG1","DBX1","DBX2","DCT","DDX1","DDX17","DIO1","DIO3","DPYSL3","DSC2","DSC3","DSG3","EMP1","ERBB2","ERBB3","ERBB4","EVX1","F3","FCER2","FGF5","FGF9","FGFR2","FGFR3","FGFR4","FGR","FKBP1A","FOLR2","FOS","FOXA2","FSHR","FUT4","FXYD3","FYN","GAP43","GATA2","GATA4","GATA6","GCK","GFRA1","GFRA1","GJB3","GRASP","GRP","HCK","HNF4A","HOXC5","HOXD10","HOXD11","HOXD13","HSD11B2","ICAM1","ICAM3","IGF1R","IGFBP2","IGFBP3","IGFBP5","IL6","IL6R","INHBA","INS","ITGAL","ITGAM","ITGAV","ITGB2","ITGB4","JUN","JUNB","KCNH2","KLK7","KRT10","KRT13","KRT14","KRT16","KRT17","KRT3","KRT6A","KRT7","LAPTM5","LEP","LGALS1","LGALS3","LGALS7","LOR","LPA","LTF","MAPK1","MAX","MC1R","MEOX1","MME","MMP13","MMP2","MSX1","MSX2","MT3","MUC2","MUC5B","MYBL2","MYCL1","NCF2","NDRG1","NME1","NOS1","NOS2","NOS3","NOTCH1","NPY","NR3C1","NR4A2","NR6A1","NTRK2","NTRK3","OLR1","PDGFRB","PECAM1","PLAU","POU4F2","POU5F1","PPP3CA","PPP3CB","PRLR","PRNP","PTEN","PTGDS","PTGS1","PTGS2","PTH","PTK2","PTMA","PTPN13","RAI2","RARRES1","RARRES2","RBP2","RET","RHO","RNPEP","RTN1","RTN3","RXRA","S100A8","SAG","SCD","SDC2","SELL","SERPINC1","SERPINE1","SFTPC","SLC18A3","SLC2A2","SOD2","SOX9","SP100","SPARC","SPN","SPRR1B","SULT2B1","SUPT4H1","TAT","TFAP2A","TFRC","TGFA","TGFB1","TGFB2","TGM1","TH","THRSP","TNC","TOP2A","TRPM2","TSHB","TYR","UCP2","VDR","VEGFC","VIM","VIPR1","WNT1","WNT3A","WT1","ADAMTS4","AFP","AHR","ARHGAP5","ARNT","ATP1A3","BGLAP","BMP7","BTK","CCND3","COL1A1","COL1A2","COL4A1","COL7A1","CP","CRH","CSF1R","CTNNB1","CTSD","CTSG","CYP7A1","EDN1","ENPP2","EVX2","FASN","FBP1","FGF1","FGF2","FGF3","FGF4","FOSL1","FSCN2","GJA1","GRIN1","GRN","GSC","GSTA4","H19","HGF","HOXA5","IBSP","IFNG","IGF2","IGFBP4","IHH","IL12B","IL2","IL8","ITGA8","ITGB5","ITGB7","IVL","KPNA2","KRT1","KRT18","KRT19","KRT4","KRT8","LDHB","LEF1","LMNA","LPL","MBP","MMP1","MMP3","MMP9","MPO","MST1","MUC4","MYB","NPPA","NPY1R","NR2F1","NR2F2","NR4A1","NRGN","NTRK1","OAS3","ODC1","OPRD1","OPRK1","OPRM1","OTX2","PDGFA","PDGFRA","PITX2","PPARA","PPARG","PTHLH","RANBP1","RB1","RBBP7","RXRG","SERPINH1","SHMT1","SLA","SLC27A1","SLC2A3","SLC9A1","SLC9A2","SOD1","TERT","TIMP1","TRH","VCAM1","VIP","ZFP42","CD38","CDX1","CEBPE","CRABP2","CRYAB","DRD2","EGR1","ETS1","FOXA1","H1F0","HOXA1","HOXA4","HOXB1","HOXB4","HOXD4","HSD17B1","IL2RA","PCK1","RARA","RARB","RARG","RBP1","SFTPB","TGM2","UCP1","ABCC2","ACADM","ADRB1","APOA1","APOA2","APOC3","APOD","ASMT","BIRC3","CDKN2B","CETP","CFH","CHAT","CRABP1","CSH1","CTSK","EFNB1","EGFR","EPO","FBP2","FOLR1","GBX2","GDF5","GH1","GNRH1","GPX2","GSTP1","HSD17B2","IGF1","IGFBP6","IL1A","IL1B","IL2RB","IRF1","ITGB3","KRT5","LHX1","LYN","MCL1","MDK","MEIS1","MGP","MMP11","MYC","MYCN","NCF1","NES","NGFR","NR2C1","NR2C2","NR4A3","NRD1","NRIP1","OXT","PCP2","PIK3CG","PLAT","PTAFR","RARRES3","RBP4","RUNX3","S100A7","SERPINB2","SFTPA1","SHH","SLC10A1","SLC5A5","SPP1","SREBF1","STAR","STAT1","STRA13","STRA6","STRA8","STS","TGFB3","TGFBR1","TGFBR2","THBD","UCP3"))
+Gen_RA_features_df <- as.data.frame(Gen_RA_features)
+colnames(Gen_RA_features_df) <- "V1"
+length(Gen_RA_features_df$V1)
+# RA gene set 446 features
+RA_not_in_gene_metadata <- Gen_RA_features_df %>% pull(V1) %>% .[!. %in% rownames(count_matrix)]
+# 58 RA_not_in_gene_metadata
+RA_in_gene_metadata <- Gen_RA_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix)]
+# 338 RA_in_gene_metadata
+
+Jackie_Hedgehog_features <- list(c("BMP2","BMP4","BMP5","BMP6","BMP7","BMP8A","BMP8B","BTRC","CSNK1A1","CSNK1A1L","CSNK1D","CSNK1","CSNK1G1","CSNK1G2","CSNK1G3","DHH","FBXW11","GAS1","GLI1","GLI2","GLI3","GSK3B","HHIP","IHH","LRP2","PRKACA","PRKACB","PRKACG","PRKX","PTCH1","PTCH2","RAB23","SHH","SMO","STK36","SUFU","WNT1","WNT10A","WNT10B","WNT11","WNT16","WNT2","NT2B","WNT3","WNT3A","WNT4","WNT5A","WNT5B","WNT6","WNT7A","WNT7B","WNT8A","WNT8B","WNT9A","WNT9B","ZIC2"))
+Jackie_Hedgehog_features_df <- as.data.frame(Jackie_Hedgehog_features)
+colnames(Jackie_Hedgehog_features_df) <- "V1"
+length(Jackie_Hedgehog_features_df$V1)
+# Hedgehog gene set 56 features
+Hedgehog_not_in_gene_metadata <- Jackie_Hedgehog_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix))]
+# 9 Hedgehog_not_in_gene_metadata
+Hedgehog_in_gene_metadata <- Jackie_Hedgehog_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix)]
+# 47 Hedgehog_in_gene_metadata
+
+Jackie_JAK_STAT_features <- list(c("AKT1","AKT2","AKT3","BCL2L1","CBL","CBLB","CBLC","CCND1","CCND2","CCND3","CISH","CLCF1","CNTF","CNTFR","CREBBP","CRLF2","CSF2","CSF2RA","CSF2RB","CSF3","CSF3R","CSH1","CTF1","EP300","EPO","EPOR","GH1","GH2","GHR","GRB2","IFNA1","IFNA10","IFNA13","IFNA14","IFNA16","IFNA17","IFNA2","IFNA21","IFNA4","IFNA5","IFNA6","IFNA7","IFNA8","IFNAR1","IFNAR2","IFNB1","IFNE","IFNG","IFNGR1","IFNGR2","IFNK","IFNL1","IFNL2","IFNL3","IFNLR1","IFNW1","IL10","IL10RA","IL10RB","IL11","IL11RA","IL12A","IL12B","IL12RB1","IL12RB2","IL13","IL13RA1","IL13RA2","IL15","IL15RA","IL19","IL2","IL20","IL20RA","IL20RB","IL21","L21R","IL22","IL22RA1","IL22RA2","IL23A","IL23R","IL24","IL26","IL2RA","IL2RB","IL2RG","IL3","IL3RA","IL4","IL4R","IL5","IL5RA","IL6","IL6R","IL6ST","IL7","IL7R","IL9","IL9R","IRF9","JAK1","JAK2","JAK3","LEP","LEPR","LIF","LIFR","MPL","MYC","OSM","OSMR","PIAS1","PIAS2","PIAS3","PIAS4","PIK3CA","PIK3CB","PIK3CD","PIK3CG","PIK3R1","PIK3R2","PIK3R3","PIK3R5","PIM1","PRL","PRLR","PTPN11","PTPN6","SOCS1","SOCS2","SOCS3","SOCS4","SOCS5","SOCS7","SOS1","SOS2","SPRED1","SPRED2","SPRY1","SPRY2","SPRY3","SPRY4","STAM","STAM2","STAT1","STAT2","STAT3","STAT4","STAT5A","STAT5B","STAT6","TPO","TSLP","TYK2"))
+Jackie_JAK_STAT_features_df <- as.data.frame(Jackie_JAK_STAT_features)
+colnames(Jackie_JAK_STAT_features_df) <- "V1"
+length(Jackie_JAK_STAT_features_df$V1)
+# JAK_STAT gene set 155 features
+JAK_STAT_not_in_gene_metadata <- Jackie_JAK_STAT_features_df %>% pull(V1) %>% .[!(. %in% rownames(count_matrix))]
+# 31 JAK_STAT_not_in_gene_metadata
+JAK_STAT_in_gene_metadata <- Jackie_JAK_STAT_features_df %>% pull(V1) %>% .[. %in% rownames(count_matrix)]
+# 124 JAK_STAT_in_gene_metadata
+
+sobj_T_CAF_only <- AddModuleScore(object = sobj_T_CAF_only,features = NABA_MATRISOME_ECM_features,name = "ECM_Fibroblast_only")
+sobj_T_CAF_only <- AddModuleScore(object = sobj_T_CAF_only,features = Jackie_Wnt_features,name = "Wnt_Fibroblast_only")
+sobj_T_CAF_only <- AddModuleScore(object = sobj_T_CAF_only,features = Gen_RA_features,name = "RA_Fibroblast_only")
+sobj_T_CAF_only <- AddModuleScore(object = sobj_T_CAF_only,features = Jackie_Hedgehog_features,name = "Hedgehog_Fibroblast_only")
+sobj_T_CAF_only <- AddModuleScore(object = sobj_T_CAF_only,features = Jackie_JAK_STAT_features,name = "JAK_STAT_Fibroblast_only")
+
+ECM_Fibroblast_only <- select(sobj_T_CAF_only@meta.data,43)
+ECM_Fibroblast_only <- cbind(rownames(ECM_Fibroblast_only),ECM_Fibroblast_only)
+colnames(ECM_Fibroblast_only) <- c("rownames","ECM_Fibroblast_only1")
+
+Wnt_Fibroblast_only <- select(sobj_T_CAF_only@meta.data,44)
+Wnt_Fibroblast_only <- cbind(rownames(Wnt_Fibroblast_only),Wnt_Fibroblast_only)
+colnames(Wnt_Fibroblast_only) <- c("rownames","Wnt_Fibroblast_only1")
+
+RA_Fibroblast_only <- select(sobj_T_CAF_only@meta.data,45)
+RA_Fibroblast_only <- cbind(rownames(RA_Fibroblast_only),RA_Fibroblast_only)
+colnames(RA_Fibroblast_only) <- c("rownames","RA_Fibroblast_only1")
+
+Hedgehog_Fibroblast_only <- select(sobj_T_CAF_only@meta.data,47)
+Hedgehog_Fibroblast_only <- cbind(rownames(Hedgehog_Fibroblast_only),Hedgehog_Fibroblast_only)
+colnames(Hedgehog_Fibroblast_only) <- c("rownames","Hedgehog_Fibroblast_only1")
+
+JAK_STAT_Fibroblast_only <- select(sobj_T_CAF_only@meta.data,46)
+JAK_STAT_Fibroblast_only <- cbind(rownames(JAK_STAT_Fibroblast_only),JAK_STAT_Fibroblast_only)
+colnames(JAK_STAT_Fibroblast_only) <- c("rownames","JAK_STAT_Fibroblast_only1")
+
+ECM_Fibroblast_only$ECM_Fibroblast_only1 <- scale(ECM_Fibroblast_only$ECM_Fibroblast_only1, center=FALSE)
+Wnt_Fibroblast_only$Wnt_Fibroblast_only1 <- scale(Wnt_Fibroblast_only$Wnt_Fibroblast_only1, center=FALSE)
+RA_Fibroblast_only$RA_Fibroblast_only1 <- scale(RA_Fibroblast_only$RA_Fibroblast_only1, center=FALSE)
+Hedgehog_Fibroblast_only$Hedgehog_Fibroblast_only1 <- scale(Hedgehog_Fibroblast_only$Hedgehog_Fibroblast_only1, center=FALSE)
+JAK_STAT_Fibroblast_only$JAK_STAT_Fibroblast_only1 <- scale(JAK_STAT_Fibroblast_only$JAK_STAT_Fibroblast_only1, center=FALSE)
+
+library(stringr)
+### sort by CAF_Classifier
+CAF_Classifier_sort <- data.frame(cbind(rownames(cell_metadata),cell_metadata$Classifier_T_Fibroblast_only))
+CAF_Classifier_sort$X2 <- str_replace(CAF_Classifier_sort$X2, "dual_negative", "01_dual_negative")
+CAF_Classifier_sort$X2 <- str_replace(CAF_Classifier_sort$X2, "myCAF", "02_myCAF")
+CAF_Classifier_sort$X2 <- str_replace(CAF_Classifier_sort$X2, "dual_positive", "03_dual_positive")
+CAF_Classifier_sort$X2 <- str_replace(CAF_Classifier_sort$X2, "iCAF", "04_iCAF")
+CAF_Classifier_sort <- CAF_Classifier_sort[order(CAF_Classifier_sort$X2, decreasing=FALSE),]
+
+CAF_Classifier_sort <- CAF_Classifier_sort[order(match(CAF_Classifier_sort$X1,Manuscript_sort_CAF_Classifier$X1)),]
+CAF_Classifier_sort <- CAF_Classifier_sort[order(CAF_Classifier_sort$X2, decreasing=FALSE),]
+
+ECM_sort_CAF_Classifier <- ECM_Fibroblast_only[order(match(ECM_Fibroblast_only$rownames,CAF_Classifier_sort$X1)),]
+Wnt_sort_CAF_Classifier <- Wnt_Fibroblast_only[order(match(Wnt_Fibroblast_only$rownames,CAF_Classifier_sort$X1)),]
+RA_sort_CAF_Classifier <- RA_Fibroblast_only[order(match(RA_Fibroblast_only$rownames,CAF_Classifier_sort$X1)),]
+Hedgehog_sort_CAF_Classifier <- Hedgehog_Fibroblast_only[order(match(Hedgehog_Fibroblast_only$rownames,CAF_Classifier_sort$X1)),]
+JAK_STAT_sort_CAF_Classifier <- JAK_STAT_Fibroblast_only[order(match(JAK_STAT_Fibroblast_only$rownames,CAF_Classifier_sort$X1)),]
+
+# colorBar_ECM_sort_myCAF <- HeatmapAnnotation(Value=ECM_sort_myCAF$ECM1,
+                              col = list(Value=col_fun))
+
+annotation_1 <- data.frame(CAF_Classifier_sort$X2)
+colnames(annotation_1) <- "X2"
+colors_1 <- list(X2=c("01_dual_negative"="#BEBEBE","02_myCAF"="#FFB6C1","03_dual_positive"="#4C0E85","04_iCAF"="#80CCFA"))
+table(annotation_1)
+
+library(circlize)
+library(ComplexHeatmap)
+# plot gene set scores
+col_fun = colorRamp2(c(-3, 0, 3), c("blue", "white", "red"))
+colorBar_annotation_sort_CAF_Classifier <- HeatmapAnnotation(df=annotation_1, col=colors_1)
+colorBar_Manuscript_sort_CAF_Classifier <- HeatmapAnnotation(df=annotation_2, col=colors_2)
+colorBar_ECM_sort_CAF_Classifier <- HeatmapAnnotation(Value=ECM_sort_CAF_Classifier$ECM_Fibroblast_only1,
+                              col = list(Value=col_fun))
+colorBar_Wnt_sort_CAF_Classifier <- HeatmapAnnotation(Value=Wnt_sort_CAF_Classifier$Wnt_Fibroblast_only1,
+                              col = list(Value=col_fun))
+colorBar_RA_sort_CAF_Classifier <- HeatmapAnnotation(Value=RA_sort_CAF_Classifier$RA_Fibroblast_only1,
+                              col = list(Value=col_fun))
+colorBar_Hedgehog_sort_CAF_Classifier <- HeatmapAnnotation(Value=Hedgehog_sort_CAF_Classifier$Hedgehog_Fibroblast_only1,
+                              col = list(Value=col_fun))
+colorBar_JAK_STAT_sort_CAF_Classifier <- HeatmapAnnotation(Value=JAK_STAT_sort_CAF_Classifier$JAK_STAT_Fibroblast_only1,
+                              col = list(Value=col_fun))
+colorBar_white <- HeatmapAnnotation(Value=white$white,
+                              col = list(Value=col_fun))
+draw(c(colorBar_annotation_sort_CAF_Classifier,colorBar_Manuscript_sort_CAF_Classifier,colorBar_ECM_sort_CAF_Classifier,colorBar_Wnt_sort_CAF_Classifier,colorBar_RA_sort_CAF_Classifier,colorBar_Hedgehog_sort_CAF_Classifier,colorBar_JAK_STAT_sort_CAF_Classifier))
+
+saveRDS(cds_T_CAF, "cds_T_CAF_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(5).rds")
+
+```
+
+
+
+
+```{r}
+
+#CNV analysis
+library(infercnv)
+library(dplyr)
+
+# counts matrix
+raw_counts_matrix <- readRDS("counts_matrix_atlas.rds")
+
+# gene positions
+gene_order_file <- read.table("PDAC_atlas_gene_position.txt")
+
+str(raw_counts_matrix)
+table(rownames(raw_counts_matrix) == gene_order_file$X1)
+rownames(raw_counts_matrix) <- gene_order_file$X2
+table(rownames(raw_counts_matrix) == gene_order_file$X2)
+
+rownames(gene_order_file) <- gene_order_file[,2]
+gene_order_file <- select(gene_order_file,3:5)
+
+# cell annotations
+annotations_file_N <- read.table("annotations_file_duct_all.txt")
+# file contains 1,000 randomly selected epithelial cells from non-malignant pancreas tissues (top 1,000 rows) and all epithelial cells from malignant pancreas tissues (35,407 cells)
+annotations_file_N <- annotations_file_N[1:1000, ]
+
+# CNVs were calculated independently for 4 different subsets of epithial cells from malignant pancreas tissues, in reference to the same set of 1,000 randomly selected epithelial cells from non-malignant pancreas tissues
+# subset_1: 17028 cells
+# subset_2: 7341 cells
+# subset_3: 2892 cells
+# subset_4: 8146 cells
+
+# example subset_4
+cds_T <- readRDS("cds_T_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(5).rds")
+library(tidyr)
+colData(cds_T)$T_assigned_cell_type_immune_broad <- 
+replace_na(colData(cds_T)[["T_assigned_cell_type_immune_broad"]],"z_NA")
+cds_subset_4 <- cds_T[,colData(cds_T)$T_assigned_cell_type_immune_broad == "Epithelial_unspecified"]
+annotations_file <- data.frame(colData(cds_subset_4))
+data_4 <- data.frame(V2=paste(annotations_file$sample_ID,annotations_file$TN_manuscript,sep="_"))
+annotations_file <- data.frame(V1=cds_subset_4@colData@rownames,V2=data_4$V2)
+rm(cds_subset_4)
+annotations_file <- rbind(annotations_file_N,annotations_file)
+rownames(annotations_file) <- annotations_file[,1]
+annotations_file <- select(annotations_file,2)
+table(annotations_file$V2)
+
+infercnv_obj <- CreateInfercnvObject(raw_counts_matrix,gene_order_file,annotations_file,ref_group_names="N_Epithelial_normal")
+rm(raw_counts_matrix)
+gc()
+
+infercnv_obj <- infercnv::run(infercnv_obj,
+                             cutoff=0.1,
+                             out_dir="PDAC_Atlas_T_Epithelial_cancer", 
+                             cluster_by_groups=FALSE, #analyze as one cluster 
+                             denoise=TRUE,
+                             sd_amplifier=1.5, #default
+                             HMM=FALSE)
+
+```
+
+
+
+```{r}
+
+###cell cycle analysis
+cds_T <- readRDS("cds_T_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(5).rds")
+
+gc()
+cell_metadata_T <- data.frame(colData(cds_T))
+test <- normalized_counts(cds_T)
+rownames(test) <- cds_T@rowRanges@elementMetadata@listData[["gene_short_name"]]
+
+library(tricycle)
+pData(cds_T)$cc <- estimate_cycle_position(test, gname.type='SYMBOL', species='human')
+pData(cds_T)$ccstage <- estimate_Schwabe_stage(test, gname.type='SYMBOL', species='human')
+
+library(viridis)
+library(ggplot2)
+plot_cells(cds_T, color_cells_by = "cc", show_trajectory = FALSE) + scale_color_viridis() + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+plot_cells(cds_T, color_cells_by = "ccstage", show_trajectory = FALSE, label_cell_groups = FALSE) + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+
+```

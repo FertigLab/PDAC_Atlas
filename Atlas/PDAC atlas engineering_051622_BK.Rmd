@@ -1,0 +1,1837 @@
+---
+title: "PDAC atlas engineering"
+author: "Benedict Kinny-Köster"
+date: "16 5 2022"
+output: html_document
+---
+
+```{r}
+
+###6 contributing manuscripts, feature ID synthesis
+library(dplyr)
+
+#Steele
+gene_metadata_TISSUE_1 <- read.table("Steele/PDAC_TISSUE_1/filtered_feature_bc_matrix/features.tsv.gz")
+gene_metadata_TISSUE_1 <- select(gene_metadata_TISSUE_1,-(3:4))
+colnames(gene_metadata_TISSUE_1) <- c("gene_ensembl_ID","gene_short_name")
+
+#Lin
+gene_metadata_Lin_P01 <- read.table("Lin/GSM4679532_K16733_features.tsv.gz")
+gene_metadata_Lin_P01 <- select(gene_metadata_Lin_P01,-(3:4))
+colnames(gene_metadata_Lin_P01) <- c("gene_ensembl_ID","gene_short_name")
+
+#Elyada
+library(rhdf5)
+data <- h5read("Elyada/DT17007-12-24-39-40-41-42-43-44-45-aggr_20190327.h5ad","/")
+load("Elyada/broad_cell_types_CDS_080720.Rda")
+gene_ensembl_ID <- as.data.frame(data[["var"]][["gene_ids"]])
+gene_short_name <- as.data.frame(data[["var"]][["index"]])
+gene_metadata_Elyada <- cbind(gene_ensembl_ID,gene_short_name)
+colnames(gene_metadata_Elyada) <- c("V1","V2")
+rm(gene_ensembl_ID)
+rm(gene_short_name)
+rm(CDS)
+rm(data)
+colnames(gene_metadata_Elyada) <- c("gene_ensembl_ID","gene_short_name")
+
+#Peng
+a <- read.table("Peng/PUMC_tumor cells/PUMC_T1.txt")
+gene_metadata_Peng <- as.data.frame(rownames(a))
+colnames(gene_metadata_Peng) <- "gene_short_name"
+rm(a)
+
+#Moncada_AB
+expression_matrix_PDAC_A_indrop1 <- read.csv(file = "Moncada/GSM3036909_PDAC-A-indrop1.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+gene_metadata_Moncada_AB <- as.data.frame(rownames(expression_matrix_PDAC_A_indrop1))
+colnames(gene_metadata_Moncada_AB) <- "gene_short_name"
+rm(expression_matrix_PDAC_A_indrop1)
+
+#Moncada_C
+expression_matrix_PDAC_C_indrop1 <- read.csv(file = "Moncada/GSM4100717_PDAC-C-indrop1.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+gene_metadata_Moncada_C <- as.data.frame(rownames(expression_matrix_PDAC_C_indrop1))
+colnames(gene_metadata_Moncada_C) <- "gene_short_name"
+rm(expression_matrix_PDAC_C_indrop1)
+
+#Bernard
+file_5 <- "Bernard/PDAC/MK300_Combine_S1.counts.umiCounts.aboveBackground.table.csv"
+file_6 <- "Bernard/PDAC/RS01_Combined_S1.counts.umiCounts.aboveBackground.table.csv"
+MK300_Combine_S1.counts.umiCounts.aboveBackground <- read.csv(file_5, header = TRUE)
+MK300_Combine_S1.counts.umiCounts.aboveBackground$stage <- "PDAC1"
+RS01_Combined_S1.counts.umiCounts.aboveBackground <- read.csv(file_6, header = TRUE)
+RS01_Combined_S1.counts.umiCounts.aboveBackground$stage <- "PDAC2"
+data <- rbind(MK300_Combine_S1.counts.umiCounts.aboveBackground, RS01_Combined_S1.counts.umiCounts.aboveBackground)
+data <- t(data)
+cols <- data[1,]
+cols <- make.names(cols, unique = TRUE)
+cols <- as.data.frame(cols)
+stage <- data[nrow(data),]
+stage <- as.data.frame(stage)
+table(stage)
+data <- data[2:nrow(data),]
+colnames(data) <- cols$cols
+expression_matrix_Bernard <- data[1:nrow(data)-1,]
+gene_metadata_Bernard <- as.data.frame(rownames(expression_matrix_Bernard))
+colnames(gene_metadata_Bernard) <- "V1"
+rm(cols)
+rm(data)
+rm(expression_matrix_Bernard)
+rm(MK300_Combine_S1.counts.umiCounts.aboveBackground)
+rm(RS01_Combined_S1.counts.umiCounts.aboveBackground)
+rm(stage)
+rm(file_5)
+rm(file_6)
+library(stringr)
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.A","-A")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.B","-B")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.C","-C")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.D","-D")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.E","-E")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.F","-F")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.G","-G")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.H","-H")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.I","-I")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.J","-J")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.K","-K")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.L","-L")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.M","-M")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.N","-N")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.O","-O")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.P","-P")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.Q","-Q")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.R","-R")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.S","-S")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.T","-T")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.U","-U")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.V","-V")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.W","-W")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.X","-X")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.Y","-Y")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.Z","-Z")
+colnames(gene_metadata_Bernard) <- "gene_short_name"
+
+features_Steele <- gene_metadata_TISSUE_1
+features_Lin_P01 <- gene_metadata_Lin_P01
+features_Elyada <- gene_metadata_Elyada
+features_Peng <- gene_metadata_Peng
+features_Bernard <- gene_metadata_Bernard
+features_Moncada_AB <- gene_metadata_Moncada_AB
+features_Moncada_C <- gene_metadata_Moncada_C
+rm(gene_metadata_TISSUE_1)
+rm(gene_metadata_Lin_P01)
+rm(gene_metadata_Elyada)
+rm(gene_metadata_Peng)
+rm(gene_metadata_Bernard)
+rm(gene_metadata_Moncada_AB)
+rm(gene_metadata_Moncada_C)
+
+
+
+### stepwise synthesis of features
+#add Peng to Steele
+mono_gene_short_names <- as.data.frame(table(features_Steele$gene_short_name))
+mono_gene_short_names <- filter(mono_gene_short_names,mono_gene_short_names$Freq==1)
+
+table(features_Peng$gene_short_name %in% mono_gene_short_names$Var1)
+add_Peng <- filter(features_Peng,!(features_Peng$gene_short_name %in% mono_gene_short_names$Var1))
+a <- as.data.frame(rep("Inconclusive",times=(length(add_Peng$gene_short_name))))
+colnames(a) <- "a"
+b <- as.data.frame(1:length(add_Peng$gene_short_name))
+colnames(b) <- "b"
+c <- as.data.frame(paste(a$a,b$b,sep=""))
+colnames(c) <- "gene_ensembl_ID"
+add_Peng <- cbind(c,add_Peng)
+rm(a)
+rm(b)
+rm(c)
+
+gene_metadata_master <- rbind(features_Steele,add_Peng)
+length(unique(gene_metadata_master$gene_ensembl_ID))
+table(duplicated(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- filter(duplicated_gene_short_names,duplicated_gene_short_names$Freq>1)
+mono_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+mono_gene_short_names <- filter(mono_gene_short_names,mono_gene_short_names$Freq==1)
+table(duplicated(mono_gene_short_names$Var1))
+
+###combine Elyada + Lin_P01 (both hg38), add Lin_P01 to Elyada
+table(features_Elyada$gene_ensembl_ID %in% features_Lin_P01$gene_ensembl_ID)
+both_Elyada <- filter(features_Elyada,(features_Elyada$gene_ensembl_ID %in% features_Lin_P01$gene_ensembl_ID))
+both_Lin_P01 <- filter(features_Lin_P01,(features_Lin_P01$gene_ensembl_ID %in% features_Elyada$gene_ensembl_ID))
+both_Elyada <- as.data.frame(both_Elyada[order(both_Elyada$gene_ensembl_ID),])
+both_Lin_P01 <- as.data.frame(both_Lin_P01[order(both_Lin_P01$gene_ensembl_ID),])
+table(both_Elyada$gene_ensembl_ID == both_Lin_P01$gene_ensembl_ID)
+table(both_Elyada$gene_short_name == both_Lin_P01$gene_short_name)
+add_Lin_P01 <- filter(features_Lin_P01,!(features_Lin_P01$gene_ensembl_ID %in% features_Elyada$gene_ensembl_ID))
+both_Elyada_Lin_P01 <- rbind(features_Elyada,add_Lin_P01)
+
+#add both_Elyada_Lin_P01
+table(features_Peng$gene_short_name %in% features_Steele$gene_short_name)
+new_Peng <- filter(features_Peng,!(features_Peng$gene_short_name %in% features_Steele$gene_short_name))
+
+table(both_Elyada_Lin_P01$gene_ensembl_ID %in% gene_metadata_master$gene_ensembl_ID)
+add_Elyada_Lin_P01 <- filter(both_Elyada_Lin_P01,!(both_Elyada_Lin_P01$gene_ensembl_ID %in% gene_metadata_master$gene_ensembl_ID))
+
+gene_metadata_master <- rbind(gene_metadata_master,add_Elyada_Lin_P01)
+length(unique(gene_metadata_master$gene_ensembl_ID))
+table(duplicated(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- filter(duplicated_gene_short_names,duplicated_gene_short_names$Freq>1)
+mono_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+mono_gene_short_names <- filter(mono_gene_short_names,mono_gene_short_names$Freq==1)
+table(duplicated(mono_gene_short_names$Var1))
+
+#add_Moncada
+#shared Moncada_AB with Moncada_C
+table(features_Moncada_AB$gene_short_name %in% features_Moncada_C$gene_short_name)
+#rest 394 in Moncada_AB
+table(features_Moncada_C$gene_short_name %in% features_Moncada_AB$gene_short_name)
+#rest 499 in Moncada_C
+features_Moncada_shared_ABC <- filter(features_Moncada_AB, features_Moncada_AB$gene_short_name %in% features_Moncada_C$gene_short_name)
+
+table(features_Moncada_shared_ABC$gene_short_name %in% mono_gene_short_names$Var1)
+add_Moncada_shared_ABC <- filter(features_Moncada_shared_ABC,!(features_Moncada_shared_ABC$gene_short_name %in% mono_gene_short_names$Var1))
+a <- as.data.frame(rep("Inconclusive",times=(length(add_Moncada_shared_ABC$gene_short_name))))
+colnames(a) <- "a"
+b <- as.data.frame(114:(113+length(add_Moncada_shared_ABC$gene_short_name)))
+colnames(b) <- "b"
+c <- as.data.frame(paste(a$a,b$b,sep=""))
+colnames(c) <- "gene_ensembl_ID"
+add_Moncada_shared_ABC <- cbind(c,add_Moncada_shared_ABC)
+rm(a)
+rm(b)
+rm(c)
+
+gene_metadata_master <- rbind(gene_metadata_master,add_Moncada_shared_ABC)
+length(unique(gene_metadata_master$gene_ensembl_ID))
+table(duplicated(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- filter(duplicated_gene_short_names,duplicated_gene_short_names$Freq>1)
+mono_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+mono_gene_short_names <- filter(mono_gene_short_names,mono_gene_short_names$Freq==1)
+table(duplicated(mono_gene_short_names$Var1))
+
+#rest from add_Moncada_AB
+features_Moncada_AB_rest <- filter(features_Moncada_AB,!(features_Moncada_AB$gene_short_name %in% features_Moncada_C$gene_short_name))
+table(features_Moncada_AB_rest$gene_short_name %in% mono_gene_short_names$Var1)
+add_Moncada_AB_rest <- filter(features_Moncada_AB_rest,!(features_Moncada_AB_rest$gene_short_name %in% mono_gene_short_names$Var1))
+a <- as.data.frame(rep("Inconclusive",times=(length(add_Moncada_AB_rest$gene_short_name))))
+colnames(a) <- "a"
+b <- as.data.frame(1432:(1431+length(add_Moncada_AB_rest$gene_short_name)))
+colnames(b) <- "b"
+c <- as.data.frame(paste(a$a,b$b,sep=""))
+colnames(c) <- "gene_ensembl_ID"
+add_Moncada_AB_rest <- cbind(c,add_Moncada_AB_rest)
+rm(a)
+rm(b)
+rm(c)
+
+gene_metadata_master <- rbind(gene_metadata_master,add_Moncada_AB_rest)
+length(unique(gene_metadata_master$gene_ensembl_ID))
+table(duplicated(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- filter(duplicated_gene_short_names,duplicated_gene_short_names$Freq>1)
+mono_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+mono_gene_short_names <- filter(mono_gene_short_names,mono_gene_short_names$Freq==1)
+table(duplicated(mono_gene_short_names$Var1))
+
+#rest from add_Moncada_C
+features_Moncada_C_rest <- filter(features_Moncada_C,!(features_Moncada_C$gene_short_name %in% features_Moncada_AB$gene_short_name))
+table(features_Moncada_C_rest$gene_short_name %in% mono_gene_short_names$Var1)
+add_Moncada_C_rest <- filter(features_Moncada_C_rest,!(features_Moncada_C_rest$gene_short_name %in% mono_gene_short_names$Var1))
+a <- as.data.frame(rep("Inconclusive",times=(length(add_Moncada_C_rest$gene_short_name))))
+colnames(a) <- "a"
+b <- as.data.frame(1592:(1591+length(add_Moncada_C_rest$gene_short_name)))
+colnames(b) <- "b"
+c <- as.data.frame(paste(a$a,b$b,sep=""))
+colnames(c) <- "gene_ensembl_ID"
+add_Moncada_C_rest <- cbind(c,add_Moncada_C_rest)
+rm(a)
+rm(b)
+rm(c)
+
+gene_metadata_master <- rbind(gene_metadata_master,add_Moncada_C_rest)
+length(unique(gene_metadata_master$gene_ensembl_ID))
+table(duplicated(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- filter(duplicated_gene_short_names,duplicated_gene_short_names$Freq>1)
+mono_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+mono_gene_short_names <- filter(mono_gene_short_names,mono_gene_short_names$Freq==1)
+table(duplicated(mono_gene_short_names$Var1))
+
+#add_Bernard
+table(features_Bernard$gene_short_name %in% mono_gene_short_names$Var1)
+add_Bernard <- filter(features_Bernard,!(features_Bernard$gene_short_name %in% mono_gene_short_names$Var1))
+a <- as.data.frame(rep("Inconclusive",times=(length(add_Bernard$gene_short_name))))
+colnames(a) <- "a"
+b <- as.data.frame(1947:(1946+length(add_Bernard$gene_short_name)))
+colnames(b) <- "b"
+c <- as.data.frame(paste(a$a,b$b,sep=""))
+colnames(c) <- "gene_ensembl_ID"
+add_Bernard <- cbind(c,add_Bernard)
+rm(a)
+rm(b)
+rm(c)
+
+gene_metadata_master <- rbind(gene_metadata_master,add_Bernard)
+length(unique(gene_metadata_master$gene_ensembl_ID))
+table(duplicated(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+duplicated_gene_short_names <- filter(duplicated_gene_short_names,duplicated_gene_short_names$Freq>1)
+mono_gene_short_names <- as.data.frame(table(gene_metadata_master$gene_short_name))
+mono_gene_short_names <- filter(mono_gene_short_names,mono_gene_short_names$Freq==1)
+table(duplicated(mono_gene_short_names$Var1))
+
+#checks
+table(duplicated(gene_metadata_master$gene_short_name))
+length(unique(gene_metadata_master$gene_short_name))
+
+#write.table(gene_metadata_master,"gene_metadata_master_Steele_Lin_Peng_Bernard_Elyada_Moncada(1).txt")
+
+
+
+###integrate ensembl_IDs back into features per dataset
+features_Peng_ensembl_ID <- filter(features_Peng,!(features_Peng$gene_short_name %in% add_Peng$gene_short_name))
+23892+113
+table(features_Peng_ensembl_ID$gene_short_name %in% gene_metadata_master$gene_short_name)
+table(features_Steele$gene_short_name %in% features_Peng_ensembl_ID$gene_short_name)
+features_Peng_ensembl_ID <- filter(features_Steele, features_Steele$gene_short_name %in% features_Peng_ensembl_ID$gene_short_name)
+features_Peng_ensembl_ID <- rbind(features_Peng_ensembl_ID,add_Peng)
+features_Peng_ordered <- as.data.frame(features_Peng[order(features_Peng$gene_short_name),])
+colnames(features_Peng_ordered) <- "gene_short_name"
+features_Peng_ensembl_ID <- features_Peng_ensembl_ID[order(features_Peng_ensembl_ID$gene_short_name),]
+table(features_Peng_ordered$gene_short_name == features_Peng_ensembl_ID$gene_short_name)
+#write.table(features_Peng_ensembl_ID,"features_Peng_ensembl_ID_ordered(1).txt")
+
+features_Elyada_gene_short_name <- filter(gene_metadata_master, gene_metadata_master$gene_ensembl_ID %in% features_Elyada$gene_ensembl_ID)
+features_Elyada_ordered <- as.data.frame(features_Elyada[order(features_Elyada$gene_ensembl_ID),])
+features_Elyada_ensembl_ID <- features_Elyada_gene_short_name[order(features_Elyada_gene_short_name$gene_ensembl_ID),]
+table(features_Elyada_ordered$gene_ensembl_ID == features_Elyada_ensembl_ID$gene_ensembl_ID)
+#write.table(features_Elyada_ensembl_ID,"features_Elyada_ensembl_ID_ordered(1).txt")
+
+features_Lin_P01_gene_short_name <- filter(gene_metadata_master, gene_metadata_master$gene_ensembl_ID %in% features_Lin_P01$gene_ensembl_ID)
+features_Lin_P01_ordered <- as.data.frame(features_Lin_P01[order(features_Lin_P01$gene_ensembl_ID),])
+features_Lin_P01_ensembl_ID <- features_Lin_P01_gene_short_name[order(features_Lin_P01_gene_short_name$gene_ensembl_ID),]
+table(features_Lin_P01_ordered$gene_ensembl_ID == features_Lin_P01_ensembl_ID$gene_ensembl_ID)
+#write.table(features_Lin_P01_ensembl_ID,"features_Lin_P01_ensembl_ID_ordered(1).txt")
+
+added_Moncada_shared_ABC_AB_rest <- rbind(add_Moncada_shared_ABC,add_Moncada_AB_rest)
+features_Moncada_AB_ensembl_ID <- filter(features_Moncada_AB,!(features_Moncada_AB$gene_short_name %in% added_Moncada_shared_ABC_AB_rest$gene_short_name))
+table(features_Moncada_AB_ensembl_ID$gene_short_name %in% gene_metadata_master$gene_short_name)
+table(gene_metadata_master$gene_short_name %in% features_Moncada_AB_ensembl_ID$gene_short_name)
+features_Moncada_AB_ensembl_ID <- filter(gene_metadata_master, gene_metadata_master$gene_short_name %in% features_Moncada_AB_ensembl_ID$gene_short_name)
+features_Moncada_AB_ensembl_ID <- rbind(features_Moncada_AB_ensembl_ID,added_Moncada_shared_ABC_AB_rest)
+features_Moncada_AB_ordered <- as.data.frame(features_Moncada_AB[order(features_Moncada_AB$gene_short_name),])
+colnames(features_Moncada_AB_ordered) <- "gene_short_name"
+features_Moncada_AB_ensembl_ID <- features_Moncada_AB_ensembl_ID[order(features_Moncada_AB_ensembl_ID$gene_short_name),]
+table(features_Moncada_AB_ordered$gene_short_name == features_Moncada_AB_ensembl_ID$gene_short_name)
+#write.table(features_Moncada_AB_ensembl_ID,"features_Moncada_AB_ensembl_ID_ordered(1).txt")
+
+added_Moncada_shared_ABC_C_rest <- rbind(add_Moncada_shared_ABC,add_Moncada_C_rest)
+features_Moncada_C_ensembl_ID <- filter(features_Moncada_C,!(features_Moncada_C$gene_short_name %in% added_Moncada_shared_ABC_C_rest$gene_short_name))
+table(features_Moncada_C_ensembl_ID$gene_short_name %in% gene_metadata_master$gene_short_name)
+table(gene_metadata_master$gene_short_name %in% features_Moncada_C_ensembl_ID$gene_short_name)
+features_Moncada_C_ensembl_ID <- filter(gene_metadata_master, gene_metadata_master$gene_short_name %in% features_Moncada_C_ensembl_ID$gene_short_name)
+features_Moncada_C_ensembl_ID <- rbind(features_Moncada_C_ensembl_ID,added_Moncada_shared_ABC_C_rest)
+features_Moncada_C_ordered <- as.data.frame(features_Moncada_C[order(features_Moncada_C$gene_short_name),])
+colnames(features_Moncada_C_ordered) <- "gene_short_name"
+features_Moncada_C_ensembl_ID <- features_Moncada_C_ensembl_ID[order(features_Moncada_C_ensembl_ID$gene_short_name),]
+table(features_Moncada_C_ordered$gene_short_name == features_Moncada_C_ensembl_ID$gene_short_name)
+#write.table(features_Moncada_C_ensembl_ID,"features_Moncada_C_ensembl_ID_ordered(1).txt")
+
+features_Bernard_ensembl_ID <- filter(features_Bernard,!(features_Bernard$gene_short_name %in% add_Bernard$gene_short_name))
+19477+6887
+table(features_Bernard_ensembl_ID$gene_short_name %in% gene_metadata_master$gene_short_name)
+table(gene_metadata_master$gene_short_name %in% features_Bernard_ensembl_ID$gene_short_name)
+features_Bernard_ensembl_ID <- filter(gene_metadata_master, gene_metadata_master$gene_short_name %in% features_Bernard_ensembl_ID$gene_short_name)
+features_Bernard_ensembl_ID <- rbind(features_Bernard_ensembl_ID,add_Bernard)
+features_Bernard_ordered <- as.data.frame(features_Bernard[order(features_Bernard$gene_short_name),])
+colnames(features_Bernard_ordered) <- "gene_short_name"
+features_Bernard_ensembl_ID <- features_Bernard_ensembl_ID[order(features_Bernard_ensembl_ID$gene_short_name),]
+table(features_Bernard_ordered$gene_short_name == features_Bernard_ensembl_ID$gene_short_name)
+#write.table(features_Bernard_ensembl_ID,"features_Bernard_ensembl_ID_ordered(1).txt")
+
+```
+
+
+
+```{r}
+
+###6 contributing manuscripts, data access and integration of harmonized/unified feature IDs
+
+###Steele
+library(monocle3)
+library(ggplot2)
+library(dplyr)
+library(Matrix)
+library(rhdf5)
+
+getwd()
+setwd("C:/Users/B. Kinny-Köster/Desktop")
+list.files()
+
+gene_metadata_Steele <- read.table("Steele/features_Steele.txt")
+
+#TISSUE_1
+expression_matrix_TISSUE_1 <- readMM("Steele/PDAC_TISSUE_1/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_1 <- read.table("Steele/PDAC_TISSUE_1/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_1 <- read.table("Steele/PDAC_TISSUE_1/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_1) <- gene_metadata_Steele$gene_ensembl_ID
+
+###CAVE 95 duplicates within V2 = gene_short_name
+a <- duplicated(gene_metadata_TISSUE_1$V2)
+a <- which(a)
+b <- gene_metadata_TISSUE_1$V2[a]
+b <- as.data.frame(b)
+rm(a)
+rm(b)
+
+###control TISSUE 1
+cds_TISSUE_1 <- load_mm_data(mat_path = "Steele/PDAC_TISSUE_1/filtered_feature_bc_matrix/matrix.mtx.gz", 
+                    feature_anno_path = "Steele/PDAC_TISSUE_1/filtered_feature_bc_matrix/features.tsv.gz", 
+                    cell_anno_path = "Steele/PDAC_TISSUE_1/filtered_feature_bc_matrix/barcodes.tsv.gz")
+cds_TISSUE_1 <- preprocess_cds(cds_TISSUE_1,num_dim = 100)
+cds_TISSUE_1 <- reduce_dimension(cds_TISSUE_1)
+plot_cells(cds_TISSUE_1)
+names(cds_TISSUE_1@rowRanges@elementMetadata@listData)[1] <- "gene_short_name"
+plot_cells(cds_TISSUE_1,genes="KRT19")
+plot_cells(cds_TISSUE_1,genes="7SK")
+
+x <- as.data.frame(cds_TISSUE_1@rowRanges@elementMetadata@listData[["gene_short_name"]])
+
+
+#TISSUE_2
+expression_matrix_TISSUE_2 <- readMM("Steele/PDAC_TISSUE_2/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_2 <- read.table("Steele/PDAC_TISSUE_2/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_2 <- read.table("Steele/PDAC_TISSUE_2/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_2) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_2) <- cell_metadata_TISSUE_2$V1
+#expression_matrix_TISSUE_2_mtx <- as.matrix(expression_matrix_TISSUE_2)
+
+#TISSUE_3
+expression_matrix_TISSUE_3 <- readMM("Steele/PDAC_TISSUE_3/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_3 <- read.table("Steele/PDAC_TISSUE_3/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_3 <- read.table("Steele/PDAC_TISSUE_3/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_3) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_3) <- cell_metadata_TISSUE_3$V1
+#expression_matrix_TISSUE_3 <- as.matrix(expression_matrix_TISSUE_3)
+
+#TISSUE_4
+expression_matrix_TISSUE_4 <- readMM("Steele/PDAC_TISSUE_4/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_4 <- read.table("Steele/PDAC_TISSUE_4/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_4 <- read.table("Steele/PDAC_TISSUE_4/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_4) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_4) <- cell_metadata_TISSUE_4$V1
+#expression_matrix_TISSUE_4 <- as.matrix(expression_matrix_TISSUE_4)
+
+#TISSUE_5
+expression_matrix_TISSUE_5 <- readMM("Steele/PDAC_TISSUE_5/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_5 <- read.table("Steele/PDAC_TISSUE_5/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_5 <- read.table("Steele/PDAC_TISSUE_5/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_5) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_5) <- cell_metadata_TISSUE_5$V1
+#expression_matrix_TISSUE_5 <- as.matrix(expression_matrix_TISSUE_5)
+
+#TISSUE_6
+expression_matrix_TISSUE_6 <- readMM("Steele/PDAC_TISSUE_6/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_6 <- read.table("Steele/PDAC_TISSUE_6/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_6 <- read.table("Steele/PDAC_TISSUE_6/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_6) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_6) <- cell_metadata_TISSUE_6$V1
+#expression_matrix_TISSUE_6 <- as.matrix(expression_matrix_TISSUE_6)
+
+#TISSUE_7
+expression_matrix_TISSUE_7 <- readMM("Steele/PDAC_TISSUE_7/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_7 <- read.table("Steele/PDAC_TISSUE_7/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_7 <- read.table("Steele/PDAC_TISSUE_7/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_7) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_7) <- cell_metadata_TISSUE_7$V1
+#expression_matrix_TISSUE_7 <- as.matrix(expression_matrix_TISSUE_7)
+
+#TISSUE_8
+expression_matrix_TISSUE_8 <- readMM("Steele/PDAC_TISSUE_8/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_8 <- read.table("Steele/PDAC_TISSUE_8/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_8 <- read.table("Steele/PDAC_TISSUE_8/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_8) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_8) <- cell_metadata_TISSUE_8$V1
+#expression_matrix_TISSUE_8 <- as.matrix(expression_matrix_TISSUE_8)
+
+#TISSUE_9
+expression_matrix_TISSUE_9 <- readMM("Steele/PDAC_TISSUE_9/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_9 <- read.table("Steele/PDAC_TISSUE_9/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_9 <- read.table("Steele/PDAC_TISSUE_9/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_9) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_9) <- cell_metadata_TISSUE_9$V1
+#expression_matrix_TISSUE_9 <- as.matrix(expression_matrix_TISSUE_9)
+
+#TISSUE_10
+expression_matrix_TISSUE_10 <- readMM("Steele/PDAC_TISSUE_10/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_10 <- read.table("Steele/PDAC_TISSUE_10/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_10 <- read.table("Steele/PDAC_TISSUE_10/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_10) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_10) <- cell_metadata_TISSUE_10$V1
+#expression_matrix_TISSUE_10 <- as.matrix(expression_matrix_TISSUE_10)
+
+#TISSUE_11A
+expression_matrix_TISSUE_11A <- readMM("Steele/PDAC_TISSUE_11A/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_11A <- read.table("Steele/PDAC_TISSUE_11A/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_11A <- read.table("Steele/PDAC_TISSUE_11A/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_11A) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_11A) <- cell_metadata_TISSUE_11A$V1
+#expression_matrix_TISSUE_11A <- as.matrix(expression_matrix_TISSUE_11A)
+
+#TISSUE_11B
+expression_matrix_TISSUE_11B <- readMM("Steele/PDAC_TISSUE_11B/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_11B <- read.table("Steele/PDAC_TISSUE_11B/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_11B <- read.table("Steele/PDAC_TISSUE_11B/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_11B) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_11B) <- cell_metadata_TISSUE_11B$V1
+#expression_matrix_TISSUE_11B <- as.matrix(expression_matrix_TISSUE_11B)
+
+#TISSUE_12
+expression_matrix_TISSUE_12 <- readMM("Steele/PDAC_TISSUE_12/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_12 <- read.table("Steele/PDAC_TISSUE_12/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_12 <- read.table("Steele/PDAC_TISSUE_12/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_12) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_12) <- cell_metadata_TISSUE_12$V1
+#expression_matrix_TISSUE_12 <- as.matrix(expression_matrix_TISSUE_12)
+
+#TISSUE_13
+expression_matrix_TISSUE_13 <- readMM("Steele/PDAC_TISSUE_13/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_13 <- read.table("Steele/PDAC_TISSUE_13/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_13 <- read.table("Steele/PDAC_TISSUE_13/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_13) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_13) <- cell_metadata_TISSUE_13$V1
+#expression_matrix_TISSUE_13 <- as.matrix(expression_matrix_TISSUE_13)
+
+#TISSUE_14
+#h5ls("Steele/PDAC_TISSUE_14/filtered_feature_bc_matrix.h5")
+data <- h5read("Steele/PDAC_TISSUE_14/filtered_feature_bc_matrix.h5", "matrix")
+
+i <- data[[4]]
+i <- as.integer(i)
+p <- data[[5]]
+p <- as.integer(p)
+x <- data[[2]]
+x <- as.numeric(x)
+Dim <- data[[6]]
+Dim <- as.integer(Dim)
+expression_matrix_TISSUE_14 <- sparseMatrix(i=i,p=p,x=x,dims=Dim)
+rm(i)
+rm(p)
+rm(x)
+rm(Dim)
+
+cell_metadata_TISSUE_14 <- as.data.frame(data[[1]])
+colnames(cell_metadata_TISSUE_14) <- "V1"
+
+#V1 <- as.data.frame(data[["features"]][["id"]])
+#V2 <- as.data.frame(data[["features"]][["name"]])
+#gene_metadata_TISSUE_14 <- cbind(V1,V2)
+#colnames(gene_metadata_TISSUE_14) <- c("V1","V2")
+#rm(V1)
+#rm(V2)
+
+rm(data)
+
+rownames(expression_matrix_TISSUE_14) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_14) <- cell_metadata_TISSUE_14$V1
+#expression_matrix_TISSUE_14 <- as.matrix(expression_matrix_TISSUE_14)
+
+#TISSUE_15
+expression_matrix_TISSUE_15 <- readMM("Steele/PDAC_TISSUE_15/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_TISSUE_15 <- read.table("Steele/PDAC_TISSUE_15/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_TISSUE_15 <- read.table("Steele/PDAC_TISSUE_15/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_TISSUE_15) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_15) <- cell_metadata_TISSUE_15$V1
+#expression_matrix_TISSUE_15 <- as.matrix(expression_matrix_TISSUE_15)
+
+#TISSUE_16
+expression_matrix_TISSUE_16 <- readMM("Steele/PDAC_TISSUE_16/filtered_gene_bc_matrices/matrix.mtx")
+cell_metadata_TISSUE_16 <- read.table("Steele/PDAC_TISSUE_16/filtered_gene_bc_matrices/barcodes.tsv")
+#gene_metadata_TISSUE_16 <- read.table("Steele/PDAC_TISSUE_16/filtered_gene_bc_matrices/genes.tsv")
+rownames(expression_matrix_TISSUE_16) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_TISSUE_16) <- cell_metadata_TISSUE_16$V1
+#expression_matrix_TISSUE_16 <- as.matrix(expression_matrix_TISSUE_16)
+
+#AdjNorm_TISSUE_1
+expression_matrix_AdjNorm_TISSUE_1 <- readMM("Steele/AdjNorm_TISSUE_1/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_AdjNorm_TISSUE_1 <- read.table("Steele/AdjNorm_TISSUE_1/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_AdjNorm_TISSUE_1 <- read.table("Steele/AdjNorm_TISSUE_1/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_AdjNorm_TISSUE_1) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_AdjNorm_TISSUE_1) <- cell_metadata_AdjNorm_TISSUE_1$V1
+#expression_matrix_AdjNorm_TISSUE_1 <- as.matrix(expression_matrix_AdjNorm_TISSUE_1)
+
+#AdjNorm_TISSUE_2
+expression_matrix_AdjNorm_TISSUE_2 <- readMM("Steele/AdjNorm_TISSUE_2/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_AdjNorm_TISSUE_2 <- read.table("Steele/AdjNorm_TISSUE_2/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_AdjNorm_TISSUE_2 <- read.table("Steele/AdjNorm_TISSUE_2/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_AdjNorm_TISSUE_2) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_AdjNorm_TISSUE_2) <- cell_metadata_AdjNorm_TISSUE_2$V1
+#expression_matrix_AdjNorm_TISSUE_2 <- as.matrix(expression_matrix_AdjNorm_TISSUE_2)
+
+#AdjNorm_TISSUE_3
+expression_matrix_AdjNorm_TISSUE_3 <- readMM("Steele/AdjNorm_TISSUE_3/filtered_feature_bc_matrix/matrix.mtx.gz")
+cell_metadata_AdjNorm_TISSUE_3 <- read.table("Steele/AdjNorm_TISSUE_3/filtered_feature_bc_matrix/barcodes.tsv.gz")
+#gene_metadata_AdjNorm_TISSUE_3 <- read.table("Steele/AdjNorm_TISSUE_3/filtered_feature_bc_matrix/features.tsv.gz")
+rownames(expression_matrix_AdjNorm_TISSUE_3) <- gene_metadata_Steele$gene_ensembl_ID
+#colnames(expression_matrix_AdjNorm_TISSUE_3) <- cell_metadata_AdjNorm_TISSUE_3$V1
+#expression_matrix_AdjNorm_TISSUE_3 <- as.matrix(expression_matrix_AdjNorm_TISSUE_3)
+
+#cbind
+expression_matrix_Steele <- cbind(expression_matrix_TISSUE_1,expression_matrix_TISSUE_2,expression_matrix_TISSUE_3,expression_matrix_TISSUE_4,expression_matrix_TISSUE_5,expression_matrix_TISSUE_6,expression_matrix_TISSUE_7,expression_matrix_TISSUE_8,expression_matrix_TISSUE_9,expression_matrix_TISSUE_10,expression_matrix_TISSUE_11A,expression_matrix_TISSUE_11B,expression_matrix_TISSUE_12,expression_matrix_TISSUE_13,expression_matrix_TISSUE_14,expression_matrix_TISSUE_15,expression_matrix_TISSUE_16,expression_matrix_AdjNorm_TISSUE_1,expression_matrix_AdjNorm_TISSUE_2,expression_matrix_AdjNorm_TISSUE_3)
+
+#expression_matrix_sparse <- cbind(expression_matrix_TISSUE_1,expression_matrix_TISSUE_14)
+
+#expression_matrix_TISSUE_1_mtx <- as.matrix(expression_matrix_TISSUE_1)
+#expression_matrix_TISSUE_14_mtx <- as.matrix(expression_matrix_TISSUE_14)
+#expression_matrix_mtx <- cbind(expression_matrix_TISSUE_1_mtx,expression_matrix_TISSUE_14_mtx)
+#expression_matrix_sparse <- as.matrix(expression_matrix_sparse)
+
+#table(expression_matrix_mtx == expression_matrix_sparse)
+
+###cell_metadata
+#PDAC_TISSUE_1, 1633 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_1$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_1",times=length(cell_metadata_TISSUE_1$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_1$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_1$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_1$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_1$V1)))
+cell_metadata_TISSUE_1 <- cbind(cell_metadata_TISSUE_1,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_1) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_2, 1791 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_2$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_2",times=length(cell_metadata_TISSUE_2$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_2$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_2$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_2$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_2$V1)))
+cell_metadata_TISSUE_2 <- cbind(cell_metadata_TISSUE_2,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_2) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_3, 2564 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_3$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_3",times=length(cell_metadata_TISSUE_3$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_3$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_3$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_3$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_3$V1)))
+cell_metadata_TISSUE_3 <- cbind(cell_metadata_TISSUE_3,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_3) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_4, 2473 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_4$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_4",times=length(cell_metadata_TISSUE_4$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_4$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_4$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_4$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_4$V1)))
+cell_metadata_TISSUE_4 <- cbind(cell_metadata_TISSUE_4,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_4) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_5, 1867 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_5$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_5",times=length(cell_metadata_TISSUE_5$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_5$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_5$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_5$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_5$V1)))
+cell_metadata_TISSUE_5 <- cbind(cell_metadata_TISSUE_5,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_5) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_6, 2343 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_6$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_6",times=length(cell_metadata_TISSUE_6$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_6$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_6$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_6$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_6$V1)))
+cell_metadata_TISSUE_6 <- cbind(cell_metadata_TISSUE_6,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_6) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_7, 7949 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_7$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_7",times=length(cell_metadata_TISSUE_7$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_7$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_7$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_7$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_7$V1)))
+cell_metadata_TISSUE_7 <- cbind(cell_metadata_TISSUE_7,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_7) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_8, 4633 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_8$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_8",times=length(cell_metadata_TISSUE_8$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_8$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_8$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_8$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_8$V1)))
+cell_metadata_TISSUE_8 <- cbind(cell_metadata_TISSUE_8,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_8) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_9, 4381 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_9$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_9",times=length(cell_metadata_TISSUE_9$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_9$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_9$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_9$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_9$V1)))
+cell_metadata_TISSUE_9 <- cbind(cell_metadata_TISSUE_9,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_9) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_10, 1464 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_10$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_10",times=length(cell_metadata_TISSUE_10$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_10$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_10$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_10$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_10$V1)))
+cell_metadata_TISSUE_10 <- cbind(cell_metadata_TISSUE_10,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_10) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_11A, 4333 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_11A$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_11A",times=length(cell_metadata_TISSUE_11A$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_11A$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_11A$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_11A$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_11A$V1)))
+cell_metadata_TISSUE_11A <- cbind(cell_metadata_TISSUE_11A,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_11A) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_11B, 2308 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_11B$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_11B",times=length(cell_metadata_TISSUE_11B$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_11B$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_11B$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_11B$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_11B$V1)))
+cell_metadata_TISSUE_11B <- cbind(cell_metadata_TISSUE_11B,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_11B) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_12, 1668 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_12$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_12",times=length(cell_metadata_TISSUE_12$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_12$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_12$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_12$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_12$V1)))
+cell_metadata_TISSUE_12 <- cbind(cell_metadata_TISSUE_12,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_12) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_13, 5108 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_13$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_13",times=length(cell_metadata_TISSUE_13$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_13$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_13$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_13$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_13$V1)))
+cell_metadata_TISSUE_13 <- cbind(cell_metadata_TISSUE_13,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_13) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_14, 763 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_14$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_14",times=length(cell_metadata_TISSUE_14$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_14$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_14$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_14$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_14$V1)))
+cell_metadata_TISSUE_14 <- cbind(cell_metadata_TISSUE_14,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_14) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_15, 3093 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_15$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_15",times=length(cell_metadata_TISSUE_15$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_15$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_15$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_15$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_15$V1)))
+cell_metadata_TISSUE_15 <- cbind(cell_metadata_TISSUE_15,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_15) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_TISSUE_16, 962 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_16$V1)))
+sample_ID <- as.data.frame(rep("PDAC_TISSUE_16",times=length(cell_metadata_TISSUE_16$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_TISSUE_16$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_TISSUE_16$V1)))
+TN_manuscript <- as.data.frame(rep("T_Steele",times=length(cell_metadata_TISSUE_16$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_TISSUE_16$V1)))
+cell_metadata_TISSUE_16 <- cbind(cell_metadata_TISSUE_16,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_TISSUE_16) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#AdjNorm_TISSUE_1, 4969 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_AdjNorm_TISSUE_1$V1)))
+sample_ID <- as.data.frame(rep("AdjNorm_TISSUE_1",times=length(cell_metadata_AdjNorm_TISSUE_1$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_AdjNorm_TISSUE_1$V1)))
+TN <- as.data.frame(rep("N",times=length(cell_metadata_AdjNorm_TISSUE_1$V1)))
+TN_manuscript <- as.data.frame(rep("N_Steele",times=length(cell_metadata_AdjNorm_TISSUE_1$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_AdjNorm_TISSUE_1$V1)))
+cell_metadata_AdjNorm_TISSUE_1 <- cbind(cell_metadata_AdjNorm_TISSUE_1,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_AdjNorm_TISSUE_1) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#AdjNorm_TISSUE_2, 3590 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_AdjNorm_TISSUE_2$V1)))
+sample_ID <- as.data.frame(rep("AdjNorm_TISSUE_2",times=length(cell_metadata_AdjNorm_TISSUE_2$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_AdjNorm_TISSUE_2$V1)))
+TN <- as.data.frame(rep("N",times=length(cell_metadata_AdjNorm_TISSUE_2$V1)))
+TN_manuscript <- as.data.frame(rep("N_Steele",times=length(cell_metadata_AdjNorm_TISSUE_2$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_AdjNorm_TISSUE_2$V1)))
+cell_metadata_AdjNorm_TISSUE_2 <- cbind(cell_metadata_AdjNorm_TISSUE_2,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_AdjNorm_TISSUE_2) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#AdjNorm_TISSUE_3, 2344 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_AdjNorm_TISSUE_3$V1)))
+sample_ID <- as.data.frame(rep("AdjNorm_TISSUE_3",times=length(cell_metadata_AdjNorm_TISSUE_3$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_AdjNorm_TISSUE_3$V1)))
+TN <- as.data.frame(rep("N",times=length(cell_metadata_AdjNorm_TISSUE_3$V1)))
+TN_manuscript <- as.data.frame(rep("N_Steele",times=length(cell_metadata_AdjNorm_TISSUE_3$V1)))
+manuscript <- as.data.frame(rep("Steele",times=length(cell_metadata_AdjNorm_TISSUE_3$V1)))
+cell_metadata_AdjNorm_TISSUE_3 <- cbind(cell_metadata_AdjNorm_TISSUE_3,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_AdjNorm_TISSUE_3) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rm(celltype)
+rm(sample_ID)
+rm(sample_ID_celltype)
+rm(TN)
+rm(TN_manuscript)
+rm(manuscript)
+
+#rbind
+cell_metadata_Steele <- rbind(cell_metadata_TISSUE_1,cell_metadata_TISSUE_2,cell_metadata_TISSUE_3,cell_metadata_TISSUE_4,cell_metadata_TISSUE_5,cell_metadata_TISSUE_6,cell_metadata_TISSUE_7,cell_metadata_TISSUE_8,cell_metadata_TISSUE_9,cell_metadata_TISSUE_10,cell_metadata_TISSUE_11A,cell_metadata_TISSUE_11B,cell_metadata_TISSUE_12,cell_metadata_TISSUE_13,cell_metadata_TISSUE_14,cell_metadata_TISSUE_15,cell_metadata_TISSUE_16,cell_metadata_AdjNorm_TISSUE_1,cell_metadata_AdjNorm_TISSUE_2,cell_metadata_AdjNorm_TISSUE_3)
+
+#clean memory
+rm(expression_matrix_TISSUE_1)
+rm(expression_matrix_TISSUE_2)
+rm(expression_matrix_TISSUE_3)
+rm(expression_matrix_TISSUE_4)
+rm(expression_matrix_TISSUE_5)
+rm(expression_matrix_TISSUE_6)
+rm(expression_matrix_TISSUE_7)
+rm(expression_matrix_TISSUE_8)
+rm(expression_matrix_TISSUE_9)
+rm(expression_matrix_TISSUE_10)
+rm(expression_matrix_TISSUE_11A)
+rm(expression_matrix_TISSUE_11B)
+rm(expression_matrix_TISSUE_12)
+rm(expression_matrix_TISSUE_13)
+rm(expression_matrix_TISSUE_14)
+rm(expression_matrix_TISSUE_15)
+rm(expression_matrix_TISSUE_16)
+rm(expression_matrix_AdjNorm_TISSUE_1)
+rm(expression_matrix_AdjNorm_TISSUE_2)
+rm(expression_matrix_AdjNorm_TISSUE_3)
+rm(cell_metadata_TISSUE_1)
+rm(cell_metadata_TISSUE_2)
+rm(cell_metadata_TISSUE_3)
+rm(cell_metadata_TISSUE_4)
+rm(cell_metadata_TISSUE_5)
+rm(cell_metadata_TISSUE_6)
+rm(cell_metadata_TISSUE_7)
+rm(cell_metadata_TISSUE_8)
+rm(cell_metadata_TISSUE_9)
+rm(cell_metadata_TISSUE_10)
+rm(cell_metadata_TISSUE_11A)
+rm(cell_metadata_TISSUE_11B)
+rm(cell_metadata_TISSUE_12)
+rm(cell_metadata_TISSUE_13)
+rm(cell_metadata_TISSUE_14)
+rm(cell_metadata_TISSUE_15)
+rm(cell_metadata_TISSUE_16)
+rm(cell_metadata_AdjNorm_TISSUE_1)
+rm(cell_metadata_AdjNorm_TISSUE_2)
+rm(cell_metadata_AdjNorm_TISSUE_3)
+
+#assign rownames to all files and colnames to expression_matrix
+rownames(gene_metadata_Steele) <- gene_metadata_Steele$gene_ensembl_ID
+rownames(cell_metadata_Steele) <- paste(cell_metadata_Steele$barcode_raw,cell_metadata_Steele$sample_ID,cell_metadata_Steele$manuscript,sep="_")
+colnames(expression_matrix_Steele) <- rownames(cell_metadata_Steele)
+
+#run Monocle3
+cds_Steele <- new_cell_data_set(expression_matrix_Steele,
+                         cell_metadata_Steele,
+                         gene_metadata_Steele)
+#saveRDS(cds_Steele,file="cds_Steele_harmonized.rds")
+
+
+
+###Peng
+library(monocle3)
+
+cell_metadata_Peng <- read.table("Peng/PUMC_raw data/all_celltype.txt",header=T,sep="\t")
+cell_metadata_Peng <- mutate(cell_metadata_Peng,cell.name2=cell.name)
+cell_metadata_Peng <- separate(cell_metadata_Peng,cell.name2, c("sample_ID","barcode"),sep="_") 
+cell_metadata_Peng <- mutate(cell_metadata_Peng,TN=sample_ID)
+cell_metadata_Peng$"sample_ID_celltype" <- paste(cell_metadata_Peng$sample_ID,cell_metadata_Peng$cluster,sep="_")
+colnames(cell_metadata_Peng)[1] <- "barcode_raw"
+colnames(cell_metadata_Peng)[2] <- "celltype"
+cell_metadata_Peng <- select(cell_metadata_Peng,barcode_raw,celltype,sample_ID,sample_ID_celltype,TN)
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T24","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T23","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T22","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T21","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T20","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T19","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T18","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T17","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T16","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T15","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T14","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T13","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T12","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T11","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T10","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T9","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T8","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T7","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T6","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T5","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T4","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T3","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T2","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"T1","T")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N11","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N10","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N9","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N8","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N7","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N6","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N5","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N4","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N3","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N2","N")
+cell_metadata_Peng$TN <- str_replace(cell_metadata_Peng$TN,"N1","N")
+manuscript <- as.data.frame(rep("Peng",times=length(cell_metadata_Peng$barcode_raw)))
+colnames(manuscript) <- "manuscript"
+TN_manuscript <- as.data.frame(paste(cell_metadata_Peng$TN,manuscript$manuscript,sep="_"))
+colnames(TN_manuscript) <- "TN_manuscript"
+cell_metadata_Peng <- cbind(cell_metadata_Peng,TN_manuscript,manuscript)
+
+rownames(cell_metadata_Peng) <- paste(cell_metadata_Peng$barcode_raw,cell_metadata_Peng$sample_ID,cell_metadata_Peng$manuscript,sep="_")
+
+rm(TN_manuscript)
+rm(manuscript)
+
+gene_metadata_Peng_ordered <- read.table("features_Peng_ensembl_ID_ordered(1).txt")
+rownames(gene_metadata_Peng_ordered) <- gene_metadata_Peng_ordered$gene_ensembl_ID
+
+expression_matrix_Peng <- read.table("Peng/PUMC_raw data/all_count-matrix.txt",header=T,sep="")
+expression_matrix_Peng <- expression_matrix_Peng[order(rownames(expression_matrix_Peng)),]
+table(rownames(expression_matrix_Peng) == gene_metadata_Peng_ordered$gene_short_name)
+rownames(expression_matrix_Peng) <- rownames(gene_metadata_Peng_ordered)
+colnames(expression_matrix_Peng) <- rownames(cell_metadata_Peng)
+
+expression_matrix_Peng <- as(as.matrix(expression_matrix_Peng),"dgCMatrix")
+
+#run Monocle3
+cds_Peng <- new_cell_data_set(expression_matrix_Peng,
+                              cell_metadata_Peng,
+                              gene_metadata_Peng_ordered)
+#saveRDS(cds_Peng,file="cds_Peng_harmonized(1).rds")
+
+
+
+###Elyada
+library(rhdf5)
+library(stringr)
+
+#h5disableFileLocking()
+#h5file <- c('C:/Users/B. Kinny-Köster/Desktop/Elyada/DT17007-12-24-39-40-41-42-43-44-45-aggr_20190327.h5ad')
+data <- h5read("C:/Users/B. Kinny-Köster/Desktop/Forschung/JHMI/PDAC Atlas/Datasets/Elyada/DT17007-12-24-39-40-41-42-43-44-45-aggr_20190327.h5ad","/")
+load("Elyada/broad_cell_types_CDS_080720.Rda")
+
+gene_ensembl_ID <- as.data.frame(data[["var"]][["gene_ids"]])
+gene_short_name <- as.data.frame(data[["var"]][["index"]])
+gene_metadata_Elyada <- cbind(gene_ensembl_ID,gene_short_name)
+colnames(gene_metadata_Elyada) <- c("gene_ensembl_ID","gene_short_name")
+
+gene_metadata_Elyada_ordered <- read.table("Elyada/features_Elyada_ensembl_ID_ordered(1).txt")
+rownames(gene_metadata_Elyada_ordered) <- gene_metadata_Elyada_ordered$gene_ensembl_ID
+
+barcode_raw <- as.data.frame(data[["obs"]][["index"]])
+colnames(barcode_raw) <- "barcode_raw"
+celltype <- as.data.frame(CDS@colData@listData[["assigned_cell_type"]])
+colnames(celltype) <- "celltype"
+sample_ID <- as.data.frame(data[["obs"]][["batch"]])
+colnames(sample_ID) <- "sample_ID"
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"0","A")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"1","B")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"2","C")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"3","D")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"4","E")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"5","F")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"6","G")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"7","H")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"8","I")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"9","J")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"A","hT97")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"B","hT99")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"C","hT103")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"D","hT137")
+#hT137TN = from the triple negative, aka fibroblast-enriched sort
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"E","hT137TN")
+#hT143 = the pathology report concluded this sample was not PDAC, exclusion recommended
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"F","hT143")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"G","hN149")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"H","hT149")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"I","hN150")
+sample_ID$sample_ID <- str_replace(sample_ID$sample_ID,"J","hT150")
+sample_ID_celltype <- as.data.frame(paste(sample_ID$sample_ID,celltype$celltype,sep="_"))
+colnames(sample_ID_celltype) <- "sample_ID_celltype"
+TN <- sample_ID
+colnames(TN) <- "TN"
+TN$TN <- str_replace(TN$TN,"hT97","T")
+TN$TN <- str_replace(TN$TN,"hT99","T")
+TN$TN <- str_replace(TN$TN,"hT103","T")
+TN$TN <- str_replace(TN$TN,"hT137TN","T_CAF_rich")
+TN$TN <- str_replace(TN$TN,"hT137","T")
+TN$TN <- str_replace(TN$TN,"hT143","unclear")
+TN$TN <- str_replace(TN$TN,"hN149","N")
+TN$TN <- str_replace(TN$TN,"hT149","T")
+TN$TN <- str_replace(TN$TN,"hN150","N")
+TN$TN <- str_replace(TN$TN,"hT150","T")
+table(TN$TN)
+1135+1681
+852+4288
+manuscript <- as.data.frame(rep("Elyada",times=length(barcode_raw$barcode_raw)))
+colnames(manuscript) <- "manuscript"
+TN_manuscript <- as.data.frame(paste(TN$TN,manuscript$manuscript,sep="_"))
+colnames(TN_manuscript) <- "TN_manuscript"
+cell_metadata_Elyada <- cbind(barcode_raw,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+
+cell_metadata_Elyada <- filter(cell_metadata_Elyada,!(sample_ID=="hT137TN"|sample_ID=="hT143"))
+5140+13516
+table(cell_metadata_Elyada$TN)
+
+expression_matrix_Elyada <- CDS@assays@data@listData[["counts"]]
+
+table(expression_matrix_Elyada@i == data[["X"]][["indices"]])
+table(expression_matrix_Elyada@p == data[["X"]][["indptr"]])
+table(expression_matrix_Elyada@x == data[["X"]][["data"]])
+
+#table(rownames(expression_matrix_Elyada) == gene_metadata_Elyada$gene_short_name)
+rownames(expression_matrix_Elyada) <- gene_metadata_Elyada$gene_ensembl_ID
+expression_matrix_Elyada <- expression_matrix_Elyada[order(rownames(expression_matrix_Elyada)),]
+table(rownames(expression_matrix_Elyada) == gene_metadata_Elyada_ordered$gene_ensembl_ID)
+expression_matrix_Elyada <- as.data.frame(as.matrix(expression_matrix_Elyada))
+expression_matrix_Elyada <- select(expression_matrix_Elyada,one_of(cell_metadata_Elyada$barcode_raw))
+
+rownames(cell_metadata_Elyada) <- paste(cell_metadata_Elyada$barcode_raw,cell_metadata_Elyada$sample_ID,cell_metadata_Elyada$manuscript,sep="_")
+table(colnames(expression_matrix_Elyada) == cell_metadata_Elyada$barcode_raw)
+colnames(expression_matrix_Elyada) <- rownames(cell_metadata_Elyada)
+
+rm(barcode_raw)
+rm(CDS)
+rm(celltype)
+rm(data)
+rm(gene_ensembl_ID)
+rm(gene_metadata_Elyada)
+rm(gene_short_name)
+rm(manuscript)
+rm(sample_ID)
+rm(sample_ID_celltype)
+rm(TN)
+rm(TN_manuscript)
+
+expression_matrix_Elyada <- as(as.matrix(expression_matrix_Elyada),"dgCMatrix")
+
+#run Monocle3
+cds_Elyada <- new_cell_data_set(expression_matrix_Elyada,
+                                cell_metadata_Elyada,
+                                gene_metadata_Elyada_ordered)
+#saveRDS(cds_Elyada,file="cds_Elyada_harmonized(1).rds")
+
+
+
+###Lin_P01
+library(monocle3)
+library(dplyr)
+library(Matrix)
+
+getwd()
+setwd("C:/Users/B. Kinny-Köster/Desktop")
+list.files()
+
+#GSM4679532	P01: Primary tumor 01
+expression_matrix_Lin_P01 <- readMM("Lin/GSM4679532_K16733_matrix.mtx.gz")
+cell_metadata_Lin_P01 <- read.table("Lin/GSM4679532_K16733_barcodes.tsv.gz")
+gene_metadata_Lin_P01 <- read.table("Lin/GSM4679532_K16733_features.tsv.gz")
+gene_metadata_Lin_P01 <- select(gene_metadata_Lin_P01,-(3:4))
+colnames(gene_metadata_Lin_P01) <- c("gene_ensembl_ID","gene_short_name")
+rownames(gene_metadata_Lin_P01) <- gene_metadata_Lin_P01$gene_ensembl_ID
+rownames(expression_matrix_Lin_P01) <- rownames(gene_metadata_Lin_P01)
+expression_matrix_Lin_P01 <- expression_matrix_Lin_P01[order(rownames(expression_matrix_Lin_P01)),]
+rm(gene_metadata_Lin_P01)
+
+#P01, 585 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P01$V1)))
+sample_ID <- as.data.frame(rep("P01",times=length(cell_metadata_Lin_P01$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P01$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P01$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P01$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P01$V1)))
+cell_metadata_Lin_P01 <- cbind(cell_metadata_Lin_P01,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P01) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rm(celltype)
+rm(sample_ID)
+rm(sample_ID_celltype)
+rm(TN)
+rm(TN_manuscript)
+rm(manuscript)
+
+gene_metadata_Lin_P01_ordered <- read.table("Lin/features_Lin_P01_ensembl_ID_ordered(1).txt")
+rownames(gene_metadata_Lin_P01_ordered) <- gene_metadata_Lin_P01_ordered$gene_ensembl_ID
+table(rownames(expression_matrix_Lin_P01) == rownames(gene_metadata_Lin_P01_ordered))
+
+rownames(cell_metadata_Lin_P01) <- paste(cell_metadata_Lin_P01$barcode_raw,cell_metadata_Lin_P01$sample_ID,cell_metadata_Lin_P01$manuscript,sep="_")
+
+colnames(expression_matrix_Lin_P01) <- rownames(cell_metadata_Lin_P01)
+
+cds_Lin_P01 <- new_cell_data_set(expression_matrix_Lin_P01,
+                                 cell_metadata_Lin_P01,
+                                 gene_metadata_Lin_P01_ordered)
+#saveRDS(cds_Lin_P01,file="cds_Lin_P01_harmonized(1).rds")
+
+
+
+###Lin_P02-10
+#GSM4679533	P02: Primary tumor 02
+expression_matrix_Lin_P02 <- readMM("Lin/GSM4679533_Y00006_matrix.mtx.gz")
+cell_metadata_Lin_P02 <- read.table("Lin/GSM4679533_Y00006_barcodes.tsv.gz")
+gene_metadata_Lin_P02 <- read.table("Lin/GSM4679533_Y00006_genes.tsv.gz")
+
+#P02, 786 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P02$V1)))
+sample_ID <- as.data.frame(rep("P02",times=length(cell_metadata_Lin_P02$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P02$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P02$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P02$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P02$V1)))
+cell_metadata_Lin_P02 <- cbind(cell_metadata_Lin_P02,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P02) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+colnames(gene_metadata_Lin_P02) <- c("gene_ensembl_ID","gene_short_name")
+rownames(gene_metadata_Lin_P02) <- gene_metadata_Lin_P02$gene_ensembl_ID
+rownames(expression_matrix_Lin_P02) <- rownames(gene_metadata_Lin_P02)
+
+#GSM4679534	P03: Primary tumor 03
+expression_matrix_Lin_P03 <- readMM("Lin/GSM4679534_T2_matrix.mtx.gz")
+cell_metadata_Lin_P03 <- read.table("Lin/GSM4679534_T2_barcodes.tsv.gz")
+#gene_metadata_Lin_P03 <- read.table("Lin/GSM4679534_T2_genes.tsv.gz")
+
+#P03, 837 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P03$V1)))
+sample_ID <- as.data.frame(rep("P03",times=length(cell_metadata_Lin_P03$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P03$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P03$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P03$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P03$V1)))
+cell_metadata_Lin_P03 <- cbind(cell_metadata_Lin_P03,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P03) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P03) <- rownames(gene_metadata_Lin_P02)
+
+
+#GSM4679535	P04: Primary tumor 04
+expression_matrix_Lin_P04 <- readMM("Lin/GSM4679535_T3_matrix.mtx.gz")
+cell_metadata_Lin_P04 <- read.table("Lin/GSM4679535_T3_barcodes.tsv.gz")
+#gene_metadata_P04 <- read.table("GSM4679535_T3_genes.tsv.gz")
+
+#P04, 1026 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P04$V1)))
+sample_ID <- as.data.frame(rep("P04",times=length(cell_metadata_Lin_P04$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P04$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P04$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P04$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P04$V1)))
+cell_metadata_Lin_P04 <- cbind(cell_metadata_Lin_P04,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P04) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P04) <- rownames(gene_metadata_Lin_P02)
+
+#GSM4679536	P05: Primary tumor 05
+expression_matrix_Lin_P05 <- readMM("Lin/GSM4679536_T4_matrix.mtx.gz")
+cell_metadata_Lin_P05 <- read.table("Lin/GSM4679536_T4_barcodes.tsv.gz")
+#gene_metadata_P05 <- read.table("GSM4679536_T4_genes.tsv.gz")
+
+#P05, 913 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P05$V1)))
+sample_ID <- as.data.frame(rep("P05",times=length(cell_metadata_Lin_P05$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P05$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P05$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P05$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P05$V1)))
+cell_metadata_Lin_P05 <- cbind(cell_metadata_Lin_P05,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P05) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P05) <- rownames(gene_metadata_Lin_P02)
+
+#GSM4679537	P06: Primary tumor 06
+expression_matrix_Lin_P06 <- readMM("Lin/GSM4679537_T5_matrix.mtx.gz")
+cell_metadata_Lin_P06 <- read.table("Lin/GSM4679537_T5_barcodes.tsv.gz")
+#gene_metadata_P06 <- read.table("GSM4679537_T5_genes.tsv.gz")
+
+#P06, 769 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P06$V1)))
+sample_ID <- as.data.frame(rep("P06",times=length(cell_metadata_Lin_P06$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P06$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P06$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P06$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P06$V1)))
+cell_metadata_Lin_P06 <- cbind(cell_metadata_Lin_P06,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P06) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P06) <- rownames(gene_metadata_Lin_P02)
+
+#GSM4679538	P07: Primary tumor 07
+expression_matrix_Lin_P07 <- readMM("Lin/GSM4679538_T6_matrix.mtx.gz")
+cell_metadata_Lin_P07 <- read.table("Lin/GSM4679538_T6_barcodes.tsv.gz")
+#gene_metadata_P07 <- read.table("GSM4679538_T6_genes.tsv.gz")
+
+#P07, 1098 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P07$V1)))
+sample_ID <- as.data.frame(rep("P07",times=length(cell_metadata_Lin_P07$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P07$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P07$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P07$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P07$V1)))
+cell_metadata_Lin_P07 <- cbind(cell_metadata_Lin_P07,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P07) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P07) <- rownames(gene_metadata_Lin_P02)
+
+#GSM4679539	P08: Primary tumor 08
+expression_matrix_Lin_P08 <- readMM("Lin/GSM4679539_T8_matrix.mtx.gz")
+cell_metadata_Lin_P08 <- read.table("Lin/GSM4679539_T8_barcodes.tsv.gz")
+#gene_metadata_P08 <- read.table("GSM4679539_T8_genes.tsv.gz")
+
+#P08, 1139 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P08$V1)))
+sample_ID <- as.data.frame(rep("P08",times=length(cell_metadata_Lin_P08$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P08$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P08$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P08$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P08$V1)))
+cell_metadata_Lin_P08 <- cbind(cell_metadata_Lin_P08,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P08) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P08) <- rownames(gene_metadata_Lin_P02)
+
+#GSM4679540	P09: Primary tumor 09
+expression_matrix_Lin_P09 <- readMM("Lin/GSM4679540_T9_matrix.mtx.gz")
+cell_metadata_Lin_P09 <- read.table("Lin/GSM4679540_T9_barcodes.tsv.gz")
+#gene_metadata_P09 <- read.table("GSM4679540_T9_genes.tsv.gz")
+
+#P09, 898 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P09$V1)))
+sample_ID <- as.data.frame(rep("P09",times=length(cell_metadata_Lin_P09$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P09$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P09$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P09$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P09$V1)))
+cell_metadata_Lin_P09 <- cbind(cell_metadata_Lin_P09,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P09) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P09) <- rownames(gene_metadata_Lin_P02)
+
+#GSM4679541	P10: Primary tumor 10
+expression_matrix_Lin_P10 <- readMM("Lin/GSM4679541_T10_matrix.mtx.gz")
+cell_metadata_Lin_P10 <- read.table("Lin/GSM4679541_T10_barcodes.tsv.gz")
+#gene_metadata_P10 <- read.table("GSM4679541_T10_genes.tsv.gz")
+
+#P10, 1570 barcodes
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P10$V1)))
+sample_ID <- as.data.frame(rep("P10",times=length(cell_metadata_Lin_P10$V1)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Lin_P10$V1)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Lin_P10$V1)))
+TN_manuscript <- as.data.frame(rep("T_Lin",times=length(cell_metadata_Lin_P10$V1)))
+manuscript <- as.data.frame(rep("Lin",times=length(cell_metadata_Lin_P10$V1)))
+cell_metadata_Lin_P10 <- cbind(cell_metadata_Lin_P10,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Lin_P10) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rownames(expression_matrix_Lin_P10) <- rownames(gene_metadata_Lin_P02)
+
+rm(celltype)
+rm(sample_ID)
+rm(sample_ID_celltype)
+rm(TN)
+rm(TN_manuscript)
+rm(manuscript)
+
+#cbind
+expression_matrix_Lin_P02 <- cbind(expression_matrix_Lin_P02,expression_matrix_Lin_P03,expression_matrix_Lin_P04,expression_matrix_Lin_P05,expression_matrix_Lin_P06,expression_matrix_Lin_P07,expression_matrix_Lin_P08,expression_matrix_Lin_P09,expression_matrix_Lin_P10)
+
+#rbind
+cell_metadata_Lin_P02 <- rbind(cell_metadata_Lin_P02,cell_metadata_Lin_P03,cell_metadata_Lin_P04,cell_metadata_Lin_P05,cell_metadata_Lin_P06,cell_metadata_Lin_P07,cell_metadata_Lin_P08,cell_metadata_Lin_P09,cell_metadata_Lin_P10)
+
+#clean memory
+rm(cell_metadata_Lin_P03)
+rm(cell_metadata_Lin_P04)
+rm(cell_metadata_Lin_P05)
+rm(cell_metadata_Lin_P06)
+rm(cell_metadata_Lin_P07)
+rm(cell_metadata_Lin_P08)
+rm(cell_metadata_Lin_P09)
+rm(cell_metadata_Lin_P10)
+rm(expression_matrix_Lin_P03)
+rm(expression_matrix_Lin_P04)
+rm(expression_matrix_Lin_P05)
+rm(expression_matrix_Lin_P06)
+rm(expression_matrix_Lin_P07)
+rm(expression_matrix_Lin_P08)
+rm(expression_matrix_Lin_P09)
+rm(expression_matrix_Lin_P10)
+
+#assign rownames to all files and colnames to expression_matrix
+rownames(cell_metadata_Lin_P02) <- paste(cell_metadata_Lin_P02$barcode_raw,cell_metadata_Lin_P02$sample_ID,cell_metadata_Lin_P02$manuscript,sep="_")
+colnames(expression_matrix_Lin_P02) <- rownames(cell_metadata_Lin_P02)
+
+#run Monocle3
+cds_Lin_P02 <- new_cell_data_set(expression_matrix_Lin_P02,
+                         cell_metadata_Lin_P02,
+                         gene_metadata_Lin_P02)
+#saveRDS(cds_Lin_P02,file="cds_Lin_P02_harmonized.rds")
+
+
+
+###Moncada_AB
+library(GEOquery)
+library(monocle3)
+library(ggplot2)
+library(dplyr)
+library(Matrix)
+
+getwd()
+setwd("C:/Users/B. Kinny-Köster/Desktop")
+
+#PDAC_A_indrop1
+expression_matrix_PDAC_A_indrop1 <- read.csv(file = "Moncada/GSM3036909_PDAC-A-indrop1.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_A_indrop1)))
+
+cell_metadata_PDAC_A_indrop1 <- as.data.frame(colnames(expression_matrix_PDAC_A_indrop1))
+colnames(cell_metadata_PDAC_A_indrop1) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop1$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_A_indrop1",times=length(cell_metadata_PDAC_A_indrop1$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop1$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_A_indrop1$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_A_indrop1$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_A_indrop1$barcode_raw)))
+cell_metadata_PDAC_A_indrop1 <- cbind(cell_metadata_PDAC_A_indrop1,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_A_indrop1) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_A_indrop2
+expression_matrix_PDAC_A_indrop2 <- read.csv(file = "Moncada/GSM3036910_PDAC-A-indrop2.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_A_indrop2)))
+
+cell_metadata_PDAC_A_indrop2 <- as.data.frame(colnames(expression_matrix_PDAC_A_indrop2))
+colnames(cell_metadata_PDAC_A_indrop2) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop2$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_A_indrop2",times=length(cell_metadata_PDAC_A_indrop2$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop2$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_A_indrop2$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_A_indrop2$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_A_indrop2$barcode_raw)))
+cell_metadata_PDAC_A_indrop2 <- cbind(cell_metadata_PDAC_A_indrop2,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_A_indrop2) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_A_indrop3
+expression_matrix_PDAC_A_indrop3 <- read.csv(file = "Moncada/GSM3405527_PDAC-A-indrop3.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_A_indrop3)))
+                          
+cell_metadata_PDAC_A_indrop3 <- as.data.frame(colnames(expression_matrix_PDAC_A_indrop3))
+colnames(cell_metadata_PDAC_A_indrop3) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop3$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_A_indrop3",times=length(cell_metadata_PDAC_A_indrop3$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop3$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_A_indrop3$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_A_indrop3$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_A_indrop3$barcode_raw)))
+cell_metadata_PDAC_A_indrop3 <- cbind(cell_metadata_PDAC_A_indrop3,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_A_indrop3) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_A_indrop4
+expression_matrix_PDAC_A_indrop4 <- read.csv(file = "Moncada/GSM3405528_PDAC-A-indrop4.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_A_indrop4)))
+                          
+cell_metadata_PDAC_A_indrop4 <- as.data.frame(colnames(expression_matrix_PDAC_A_indrop4))
+colnames(cell_metadata_PDAC_A_indrop4) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop4$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_A_indrop4",times=length(cell_metadata_PDAC_A_indrop4$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop4$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_A_indrop4$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_A_indrop4$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_A_indrop4$barcode_raw)))
+cell_metadata_PDAC_A_indrop4 <- cbind(cell_metadata_PDAC_A_indrop4,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_A_indrop4) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_A_indrop5
+expression_matrix_PDAC_A_indrop5 <- read.csv(file = "Moncada/GSM3405529_PDAC-A-indrop5.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_A_indrop5)))
+                          
+cell_metadata_PDAC_A_indrop5 <- as.data.frame(colnames(expression_matrix_PDAC_A_indrop5))
+colnames(cell_metadata_PDAC_A_indrop5) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop5$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_A_indrop5",times=length(cell_metadata_PDAC_A_indrop5$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop5$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_A_indrop5$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_A_indrop5$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_A_indrop5$barcode_raw)))
+cell_metadata_PDAC_A_indrop5 <- cbind(cell_metadata_PDAC_A_indrop5,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_A_indrop5) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_A_indrop6
+expression_matrix_PDAC_A_indrop6 <- read.csv(file = "Moncada/GSM3405530_PDAC-A-indrop6.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_A_indrop6)))
+                          
+cell_metadata_PDAC_A_indrop6 <- as.data.frame(colnames(expression_matrix_PDAC_A_indrop6))
+colnames(cell_metadata_PDAC_A_indrop6) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop6$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_A_indrop6",times=length(cell_metadata_PDAC_A_indrop6$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_A_indrop6$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_A_indrop6$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_A_indrop6$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_A_indrop6$barcode_raw)))
+cell_metadata_PDAC_A_indrop6 <- cbind(cell_metadata_PDAC_A_indrop6,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_A_indrop6) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_B_indrop1
+expression_matrix_PDAC_B_indrop1 <- read.csv(file = "Moncada/GSM3405531_PDAC-B-indrop1.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_B_indrop1)))
+                          
+cell_metadata_PDAC_B_indrop1 <- as.data.frame(colnames(expression_matrix_PDAC_B_indrop1))
+colnames(cell_metadata_PDAC_B_indrop1) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_B_indrop1$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_B_indrop1",times=length(cell_metadata_PDAC_B_indrop1$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_B_indrop1$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_B_indrop1$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_B_indrop1$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_B_indrop1$barcode_raw)))
+cell_metadata_PDAC_B_indrop1 <- cbind(cell_metadata_PDAC_B_indrop1,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_B_indrop1) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_B_indrop2
+expression_matrix_PDAC_B_indrop2 <- read.csv(file = "Moncada/GSM3405532_PDAC-B-indrop2.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_B_indrop2)))
+                          
+cell_metadata_PDAC_B_indrop2 <- as.data.frame(colnames(expression_matrix_PDAC_B_indrop2))
+colnames(cell_metadata_PDAC_B_indrop2) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_B_indrop2$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_B_indrop2",times=length(cell_metadata_PDAC_B_indrop2$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_B_indrop2$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_B_indrop2$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_B_indrop2$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_B_indrop2$barcode_raw)))
+cell_metadata_PDAC_B_indrop2 <- cbind(cell_metadata_PDAC_B_indrop2,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_B_indrop2) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_B_indrop3
+expression_matrix_PDAC_B_indrop3 <- read.csv(file = "Moncada/GSM3405533_PDAC-B-indrop3.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_B_indrop3)))
+                          
+cell_metadata_PDAC_B_indrop3 <- as.data.frame(colnames(expression_matrix_PDAC_B_indrop3))
+colnames(cell_metadata_PDAC_B_indrop3) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_B_indrop3$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_B_indrop3",times=length(cell_metadata_PDAC_B_indrop3$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_B_indrop3$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_B_indrop3$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_B_indrop3$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_B_indrop3$barcode_raw)))
+cell_metadata_PDAC_B_indrop3 <- cbind(cell_metadata_PDAC_B_indrop3,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_B_indrop3) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rm(celltype)
+rm(sample_ID)
+rm(sample_ID_celltype)
+rm(TN)
+rm(TN_manuscript)
+rm(manuscript)
+
+#cbind
+expression_matrix_Moncada_AB <- cbind(expression_matrix_PDAC_A_indrop1,expression_matrix_PDAC_A_indrop2,expression_matrix_PDAC_A_indrop3,expression_matrix_PDAC_A_indrop4,expression_matrix_PDAC_A_indrop5,expression_matrix_PDAC_A_indrop6,expression_matrix_PDAC_B_indrop1,expression_matrix_PDAC_B_indrop2,expression_matrix_PDAC_B_indrop3)
+                                   
+rm(expression_matrix_PDAC_A_indrop1)
+rm(expression_matrix_PDAC_A_indrop2)
+rm(expression_matrix_PDAC_A_indrop3)
+rm(expression_matrix_PDAC_A_indrop4)
+rm(expression_matrix_PDAC_A_indrop5)
+rm(expression_matrix_PDAC_A_indrop6)
+rm(expression_matrix_PDAC_B_indrop1)
+rm(expression_matrix_PDAC_B_indrop2)
+rm(expression_matrix_PDAC_B_indrop3)
+
+#rbind
+cell_metadata_Moncada_AB <- rbind(cell_metadata_PDAC_A_indrop1,cell_metadata_PDAC_A_indrop2,cell_metadata_PDAC_A_indrop3,cell_metadata_PDAC_A_indrop4,cell_metadata_PDAC_A_indrop5,cell_metadata_PDAC_A_indrop6,cell_metadata_PDAC_B_indrop1,cell_metadata_PDAC_B_indrop2,cell_metadata_PDAC_B_indrop3)
+
+rm(cell_metadata_PDAC_A_indrop1)
+rm(cell_metadata_PDAC_A_indrop2)
+rm(cell_metadata_PDAC_A_indrop3)
+rm(cell_metadata_PDAC_A_indrop4)
+rm(cell_metadata_PDAC_A_indrop5)
+rm(cell_metadata_PDAC_A_indrop6)
+rm(cell_metadata_PDAC_B_indrop1)
+rm(cell_metadata_PDAC_B_indrop2)
+rm(cell_metadata_PDAC_B_indrop3)
+
+gene_metadata_Moncada_AB_ordered <- read.table("features_Moncada_AB_ensembl_ID_ordered(1).txt")
+rownames(gene_metadata_Moncada_AB_ordered) <- gene_metadata_Moncada_AB_ordered$gene_ensembl_ID
+
+expression_matrix_Moncada_AB <- expression_matrix_Moncada_AB[order(rownames(expression_matrix_Moncada_AB)),]
+table(rownames(expression_matrix_Moncada_AB) == gene_metadata_Moncada_AB_ordered$gene_short_name)
+rownames(expression_matrix_Moncada_AB) <- rownames(gene_metadata_Moncada_AB_ordered)
+
+rownames(cell_metadata_Moncada_AB) <- paste(cell_metadata_Moncada_AB$barcode_raw,cell_metadata_Moncada_AB$sample_ID,cell_metadata_Moncada_AB$manuscript,sep="_")
+table(colnames(expression_matrix_Moncada_AB) == cell_metadata_Moncada_AB$barcode_raw)
+colnames(expression_matrix_Moncada_AB) <- rownames(cell_metadata_Moncada_AB)
+
+#expression_matrix_Moncada_AB <- as(as.matrix(expression_matrix_Moncada_AB),"dgCMatrix")
+expression_matrix_Moncada_AB <- as.matrix(expression_matrix_Moncada_AB)
+expression_matrix_Moncada_AB <- as(expression_matrix_Moncada_AB,"dgCMatrix")
+
+#run Monocle3
+cds_Moncada_AB <- new_cell_data_set(expression_matrix_Moncada_AB,
+                                 cell_metadata_Moncada_AB,
+                                 gene_metadata_Moncada_AB_ordered)
+cds_Moncada_AB_0 <- cds_Moncada_AB[,Matrix::colSums(exprs(cds_Moncada_AB)) == 0]
+cds_Moncada_AB <- cds_Moncada_AB[,Matrix::colSums(exprs(cds_Moncada_AB)) != 0]
+cds_Moncada_AB <- estimate_size_factors(cds_Moncada_AB)
+#saveRDS(cds_Moncada_AB,file="cds_Moncada_AB_harmonized(1).rds")
+
+
+
+###Moncada_C
+#PDAC_C_indrop1
+expression_matrix_PDAC_C_indrop1 <- read.csv(file = "Moncada/GSM4100717_PDAC-C-indrop1.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_C_indrop1)))
+
+cell_metadata_PDAC_C_indrop1 <- as.data.frame(colnames(expression_matrix_PDAC_C_indrop1))
+colnames(cell_metadata_PDAC_C_indrop1) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop1$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_C_indrop1",times=length(cell_metadata_PDAC_C_indrop1$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop1$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_C_indrop1$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_C_indrop1$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_C_indrop1$barcode_raw)))
+cell_metadata_PDAC_C_indrop1 <- cbind(cell_metadata_PDAC_C_indrop1,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_C_indrop1) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_C_indrop2
+expression_matrix_PDAC_C_indrop2 <- read.csv(file = "Moncada/GSM4100718_PDAC-C-indrop2.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_C_indrop2)))
+
+cell_metadata_PDAC_C_indrop2 <- as.data.frame(colnames(expression_matrix_PDAC_C_indrop2))
+colnames(cell_metadata_PDAC_C_indrop2) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop2$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_C_indrop2",times=length(cell_metadata_PDAC_C_indrop2$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop2$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_C_indrop2$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_C_indrop2$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_C_indrop2$barcode_raw)))
+cell_metadata_PDAC_C_indrop2 <- cbind(cell_metadata_PDAC_C_indrop2,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_C_indrop2) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_C_indrop3
+expression_matrix_PDAC_C_indrop3 <- read.csv(file = "Moncada/GSM4100719_PDAC-C-indrop3.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_C_indrop3)))
+
+cell_metadata_PDAC_C_indrop3 <- as.data.frame(colnames(expression_matrix_PDAC_C_indrop3))
+colnames(cell_metadata_PDAC_C_indrop3) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop3$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_C_indrop3",times=length(cell_metadata_PDAC_C_indrop3$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop3$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_C_indrop3$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_C_indrop3$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_C_indrop3$barcode_raw)))
+cell_metadata_PDAC_C_indrop3 <- cbind(cell_metadata_PDAC_C_indrop3,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_C_indrop3) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+#PDAC_C_indrop4
+expression_matrix_PDAC_C_indrop4 <- read.csv(file = "Moncada/GSM4100720_PDAC-C-indrop4.tsv.gz", header = TRUE, sep = "\t", quote = "\"", dec = ".", fill = TRUE, row.names = 1)
+table(duplicated(colnames(expression_matrix_PDAC_C_indrop4)))
+
+cell_metadata_PDAC_C_indrop4 <- as.data.frame(colnames(expression_matrix_PDAC_C_indrop4))
+colnames(cell_metadata_PDAC_C_indrop4) <- "barcode_raw"
+celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop4$barcode_raw)))
+sample_ID <- as.data.frame(rep("PDAC_C_indrop4",times=length(cell_metadata_PDAC_C_indrop4$barcode_raw)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_PDAC_C_indrop4$barcode_raw)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_PDAC_C_indrop4$barcode_raw)))
+TN_manuscript <- as.data.frame(rep("T_Moncada",times=length(cell_metadata_PDAC_C_indrop4$barcode_raw)))
+manuscript <- as.data.frame(rep("Moncada",times=length(cell_metadata_PDAC_C_indrop4$barcode_raw)))
+cell_metadata_PDAC_C_indrop4 <- cbind(cell_metadata_PDAC_C_indrop4,celltype,sample_ID,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_PDAC_C_indrop4) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+
+rm(celltype)
+rm(sample_ID)
+rm(sample_ID_celltype)
+rm(TN)
+rm(TN_manuscript)
+rm(manuscript)
+
+#cbind
+expression_matrix_Moncada_C <- cbind(expression_matrix_PDAC_C_indrop1,expression_matrix_PDAC_C_indrop2,expression_matrix_PDAC_C_indrop3,expression_matrix_PDAC_C_indrop4)
+                                   
+rm(expression_matrix_PDAC_C_indrop1)
+rm(expression_matrix_PDAC_C_indrop2)
+rm(expression_matrix_PDAC_C_indrop3)
+rm(expression_matrix_PDAC_C_indrop4)
+
+#rbind
+cell_metadata_Moncada_C <- rbind(cell_metadata_PDAC_C_indrop1,cell_metadata_PDAC_C_indrop2,cell_metadata_PDAC_C_indrop3,cell_metadata_PDAC_C_indrop4)
+
+rm(cell_metadata_PDAC_C_indrop1)
+rm(cell_metadata_PDAC_C_indrop2)
+rm(cell_metadata_PDAC_C_indrop3)
+rm(cell_metadata_PDAC_C_indrop4)
+
+#gene_metadata
+#x <- as.data.frame(rownames(expression_matrix_Moncada_PDAC_C))
+#table(gene_metadata_Moncada_ordered$gene_short_name %in% x$`rownames(expression_matrix_Moncada_PDAC_C)`) 
+#table(x$`rownames(expression_matrix_Moncada_PDAC_C)` %in% gene_metadata_Moncada_ordered$gene_short_name)
+
+###
+gene_metadata_Moncada_C_ordered <- read.table("features_Moncada_C_ensembl_ID_ordered(1).txt")
+rownames(gene_metadata_Moncada_C_ordered) <- gene_metadata_Moncada_C_ordered$gene_ensembl_ID
+
+expression_matrix_Moncada_C <- expression_matrix_Moncada_C[order(rownames(expression_matrix_Moncada_C)),]
+table(rownames(expression_matrix_Moncada_C) == gene_metadata_Moncada_C_ordered$gene_short_name)
+rownames(expression_matrix_Moncada_C) <- rownames(gene_metadata_Moncada_C_ordered)
+
+rownames(cell_metadata_Moncada_C) <- paste(cell_metadata_Moncada_C$barcode_raw,cell_metadata_Moncada_C$sample_ID,cell_metadata_Moncada_C$manuscript,sep="_")
+table(colnames(expression_matrix_Moncada_C) == cell_metadata_Moncada_C$barcode_raw)
+colnames(expression_matrix_Moncada_C) <- rownames(cell_metadata_Moncada_C)
+
+expression_matrix_Moncada_C <- as(as.matrix(expression_matrix_Moncada_C),"dgCMatrix")
+
+#run Monocle3
+cds_Moncada_C <- new_cell_data_set(expression_matrix_Moncada_C,
+                                 cell_metadata_Moncada_C,
+                                 gene_metadata_Moncada_C_ordered)
+#saveRDS(cds_Moncada_C,file="cds_Moncada_C_harmonized(1).rds")
+
+
+
+###Bernard
+library(plyr)
+library(dplyr)
+library(Matrix)
+library(ggplot2)
+#library(SAVER)
+library(devtools)
+library(pkgload)
+
+
+file_5 <- "Bernard/PDAC/MK300_Combine_S1.counts.umiCounts.aboveBackground.table.csv"
+file_6 <- "Bernard/PDAC/RS01_Combined_S1.counts.umiCounts.aboveBackground.table.csv"
+MK300_Combine_S1.counts.umiCounts.aboveBackground <- read.csv(file_5, header = TRUE)
+MK300_Combine_S1.counts.umiCounts.aboveBackground$stage <- "PDAC1"
+RS01_Combined_S1.counts.umiCounts.aboveBackground <- read.csv(file_6, header = TRUE)
+RS01_Combined_S1.counts.umiCounts.aboveBackground$stage <- "PDAC2"
+
+data <- rbind(MK300_Combine_S1.counts.umiCounts.aboveBackground, RS01_Combined_S1.counts.umiCounts.aboveBackground)
+data <- t(data)
+
+cols <- data[1,]
+cols <- make.names(cols, unique = TRUE)
+cols <- as.data.frame(cols)
+
+stage <- data[nrow(data),]
+stage <- as.data.frame(stage)
+table(stage)
+
+data <- data[2:nrow(data),]
+colnames(data) <- cols$cols
+expression_matrix_Bernard <- data[1:nrow(data)-1,]
+expression_matrix_Bernard <- as(expression_matrix_Bernard,"dgCMatrix")
+
+cell_metadata_Bernard <- cbind(cols,stage)
+celltype <- as.data.frame(rep("",times=length(cell_metadata_Bernard$cols)))
+sample_ID_celltype <- as.data.frame(rep("",times=length(cell_metadata_Bernard$cols)))
+TN <- as.data.frame(rep("T",times=length(cell_metadata_Bernard$cols)))
+TN_manuscript <- as.data.frame(rep("T_Bernard",times=length(cell_metadata_Bernard$cols)))
+manuscript <- as.data.frame(rep("Bernard",times=length(cell_metadata_Bernard$cols)))
+cell_metadata_Bernard <- cbind(cell_metadata_Bernard$cols,celltype,cell_metadata_Bernard$stage,sample_ID_celltype,TN,TN_manuscript,manuscript)
+colnames(cell_metadata_Bernard) <- c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript")
+rownames(cell_metadata_Bernard) <- paste(cell_metadata_Bernard$barcode_raw,cell_metadata_Bernard$sample_ID,cell_metadata_Bernard$manuscript,sep="_")
+
+gene_metadata_Bernard_ordered <- read.table("Bernard/features_Bernard_ensembl_ID_ordered(1).txt")
+rownames(gene_metadata_Bernard_ordered) <- gene_metadata_Bernard_ordered$gene_ensembl_ID
+
+expression_matrix_Bernard <- expression_matrix_Bernard[order(rownames(expression_matrix_Bernard)),]
+gene_metadata_Bernard <- as.data.frame(rownames(expression_matrix_Bernard))
+colnames(gene_metadata_Bernard) <- "V1"
+library(stringr)
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.A","-A")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.B","-B")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.C","-C")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.D","-D")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.E","-E")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.F","-F")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.G","-G")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.H","-H")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.I","-I")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.J","-J")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.K","-K")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.L","-L")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.M","-M")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.N","-N")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.O","-O")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.P","-P")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.Q","-Q")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.R","-R")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.S","-S")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.T","-T")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.U","-U")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.V","-V")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.W","-W")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.X","-X")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.Y","-Y")
+gene_metadata_Bernard$V1 <- str_replace(gene_metadata_Bernard$V1,"\\.Z","-Z")
+rownames(expression_matrix_Bernard) <- gene_metadata_Bernard$V1
+expression_matrix_Bernard <- expression_matrix_Bernard[order(rownames(expression_matrix_Bernard)),]
+table(rownames(expression_matrix_Bernard) == gene_metadata_Bernard_ordered$gene_short_name)
+rownames(expression_matrix_Bernard) <- rownames(gene_metadata_Bernard_ordered)
+colnames(expression_matrix_Bernard) <- rownames(cell_metadata_Bernard)
+#expression_matrix_Bernard_test <- as.matrix(expression_matrix_Bernard)
+
+rm(gene_metadata_Bernard)
+rm(celltype)
+rm(sample_ID_celltype)
+rm(TN)
+rm(TN_manuscript)
+rm(manuscript)
+rm(data)
+rm(cols)
+rm(stage)
+rm(MK300_Combine_S1.counts.umiCounts.aboveBackground)
+rm(RS01_Combined_S1.counts.umiCounts.aboveBackground)
+rm(file_5)
+rm(file_6)
+
+cds_Bernard <- new_cell_data_set(expression_matrix_Bernard,
+                         cell_metadata_Bernard,
+                         gene_metadata_Bernard_ordered)
+#saveRDS(cds_Bernard,file="cds_Bernard_harmonized(1).rds")
+
+```
+
+
+
+```{r}
+
+###atlas engineering, PDAC and non-malignant tissues
+cds_Steele_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Steele_harmonized.rds")
+cds_Peng_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Peng_harmonized(1).rds")
+cds_Elyada_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Elyada_harmonized(1).rds")
+cds_Lin_P01_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Lin_P01_harmonized(1).rds")
+cds_Lin_P02_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Lin_P02_harmonized.rds")
+cds_Moncada_AB_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Moncada_AB_harmonized(1).rds")
+cds_Moncada_C_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Moncada_C_harmonized(1).rds")
+cds_Bernard_harmonized <- readRDS("PDAC Atlas_cds objects_harmonized/cds_Bernard_harmonized(1).rds")
+
+
+
+cds_combined_8 <- combine_cds(list(cds_Steele_harmonized,cds_Lin_P02_harmonized,cds_Lin_P01_harmonized,cds_Elyada_harmonized,cds_Peng_harmonized,cds_Moncada_AB_harmonized,cds_Moncada_C_harmonized,cds_Bernard_harmonized),cell_names_unique=TRUE)
+
+### cds_combined_8_QC
+library(Seurat)
+expression_matrix_combined_8 <- assay(cds_combined_8)
+cell_metadata_combined_8 <- as.data.frame(colData(cds_combined_8))
+gene_metadata_combined_8 <- as.data.frame(cds_combined_8@rowRanges@elementMetadata@listData)
+table(rownames(expression_matrix_combined_8) == gene_metadata_combined_8$gene_ensembl_ID)
+table(duplicated(gene_metadata_combined_8$gene_short_name))
+rownames(expression_matrix_combined_8) <- gene_metadata_combined_8$gene_short_name
+sobj_combined_8 <- CreateSeuratObject(counts = expression_matrix_combined_8,project = "combined_8",min.cells=0)
+
+# QC analysis and visualization
+sobj_combined_8[["percent.mt"]] <- PercentageFeatureSet(sobj_combined_8, pattern = "^MT-")
+head(sobj_combined_8@meta.data, 5)
+
+QC_metrics <- sobj_combined_8@meta.data
+QC_metrics <- select(QC_metrics,2:4)
+table(rownames(QC_metrics) == rownames(cell_metadata_combined_8))
+cell_metadata_combined_8_QC <- cbind(cell_metadata_combined_8,QC_metrics)
+colnames(cell_metadata_combined_8_QC)
+cell_metadata_combined_8 <- select(cell_metadata_combined_8_QC,"barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript","nCount_RNA","nFeature_RNA","percent.mt","Size_Factor")
+cds_combined_8_QC <- cds_combined_8
+
+cds_combined_8_QC@colData@listData[["nCount_RNA"]] <- cell_metadata_combined_8_QC$nCount_RNA
+cds_combined_8_QC@colData@listData[["nFeature_RNA"]] <- cell_metadata_combined_8_QC$nFeature_RNA
+cds_combined_8_QC@colData@listData[["percent.mt"]] <- cell_metadata_combined_8_QC$percent.mt
+cds_combined_8_QC@colData@listData <- cds_combined_8_QC@colData@listData[c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript","nCount_RNA","nFeature_RNA","percent.mt","Size_Factor")]
+
+feature_in_nCells <- as.data.frame(rowSums(cds_combined_8_QC@assays@data@listData[["counts"]] != 0))
+colnames(feature_in_nCells) <- "feature_in_nCells"
+table(gene_metadata_combined_8$gene_ensembl_ID == rownames(feature_in_nCells))
+gene_metadata_combined_8_QC <- cbind(gene_metadata_combined_8,feature_in_nCells)
+cds_combined_8_QC@rowRanges@elementMetadata@listData[["feature_in_nCells"]] <- gene_metadata_combined_8_QC$feature_in_nCells
+
+
+
+cds_combined_8_SHARED_GENES <- combine_cds(list(cds_Steele_harmonized,cds_Lin_P02_harmonized,cds_Lin_P01_harmonized,cds_Elyada_harmonized,cds_Peng_harmonized,cds_Moncada_AB_harmonized,cds_Moncada_C_harmonized,cds_Bernard_harmonized),keep_all_genes=FALSE,cell_names_unique=TRUE)
+#x <- cds_combined_8_SHARED_GENES@assays@data@listData[["counts"]]
+#y <- as.data.frame(colSums(x))
+#colnames(y) <- "y"
+cds_combined_8_SHARED_GENES_0 <- cds_combined_8_SHARED_GENES[,Matrix::colSums(exprs(cds_combined_8_SHARED_GENES)) == 0]
+#removal of 80 cells, 174394 -> 174314 cells
+cds_combined_8_SHARED_GENES <- cds_combined_8_SHARED_GENES[,Matrix::colSums(exprs(cds_combined_8_SHARED_GENES)) != 0]
+cds_combined_8_SHARED_GENES <- estimate_size_factors(cds_combined_8_SHARED_GENES)
+
+
+
+cds_combined_8_SHARED_GENES_QC <- combine_cds(list(cds_Steele_harmonized,cds_Lin_P02_harmonized,cds_Lin_P01_harmonized,cds_Elyada_harmonized,cds_Peng_harmonized,cds_Moncada_AB_harmonized,cds_Moncada_C_harmonized,cds_Bernard_harmonized),keep_all_genes=FALSE,cell_names_unique=TRUE)
+rm(cds_Steele_harmonized)
+rm(cds_Peng_harmonized)
+rm(cds_Lin_P01_harmonized)
+rm(cds_Lin_P02_harmonized)
+rm(cds_Moncada_AB_harmonized)
+rm(cds_Moncada_C_harmonized)
+rm(cds_Elyada_harmonized)
+rm(cds_Bernard_harmonized)
+
+cell_metadata_combined_8_QC <- as.data.frame(cds_combined_8_QC@colData@listData)
+table(rownames(cell_metadata_combined_8_QC) == cds_combined_8_SHARED_GENES_QC@colData@rownames)
+
+cds_combined_8_SHARED_GENES_QC@colData@listData[["nCount_RNA"]] <- cell_metadata_combined_8_QC$nCount_RNA
+cds_combined_8_SHARED_GENES_QC@colData@listData[["nFeature_RNA"]] <- cell_metadata_combined_8_QC$nFeature_RNA
+cds_combined_8_SHARED_GENES_QC@colData@listData[["percent.mt"]] <- cell_metadata_combined_8_QC$percent.mt
+cds_combined_8_SHARED_GENES_QC@colData@listData <- cds_combined_8_SHARED_GENES_QC@colData@listData[c("barcode_raw","celltype","sample_ID","sample_ID_celltype","TN","TN_manuscript","manuscript","nCount_RNA","nFeature_RNA","percent.mt","Size_Factor")]
+
+feature_in_nCells <- as.data.frame(rowSums(cds_combined_8_SHARED_GENES_QC@assays@data@listData[["counts"]] != 0))
+colnames(feature_in_nCells) <- "feature_in_nCells"
+table(cds_combined_8_SHARED_GENES_QC@rowRanges@elementMetadata@listData[["gene_ensembl_ID"]] == rownames(feature_in_nCells))
+cds_combined_8_SHARED_GENES_QC@rowRanges@elementMetadata@listData[["feature_in_nCells"]] <- feature_in_nCells$feature_in_nCells
+rm(feature_in_nCells)
+
+#x <- cds_combined_8_SHARED_GENES@assays@data@listData[["counts"]]
+#y <- as.data.frame(colSums(x))
+#colnames(y) <- "y"
+cds_combined_8_SHARED_GENES_QC_0 <- cds_combined_8_SHARED_GENES_QC[,Matrix::colSums(exprs(cds_combined_8_SHARED_GENES_QC)) == 0]
+#removal of 80 cells, 174394 -> 174314 cells
+cds_combined_8_SHARED_GENES_QC <- cds_combined_8_SHARED_GENES_QC[,Matrix::colSums(exprs(cds_combined_8_SHARED_GENES_QC)) != 0]
+cds_combined_8_SHARED_GENES_QC <- estimate_size_factors(cds_combined_8_SHARED_GENES_QC)
+
+
+
+cds_combined_8_SHARED_GENES_QC_filtered <- cds_combined_8_SHARED_GENES_QC[cds_combined_8_SHARED_GENES_QC@rowRanges@elementMetadata@listData[["feature_in_nCells"]] >=3,colData(cds_combined_8_SHARED_GENES_QC)$percent.mt <=15 & colData(cds_combined_8_SHARED_GENES_QC)$nFeature_RNA %in% c(50:5000)]
+
+cds_combined_8_SHARED_GENES_QC_filtered <- preprocess_cds(cds_combined_8_SHARED_GENES_QC_filtered, num_dim = 100)
+cds_combined_8_SHARED_GENES_QC_filtered <- align_cds(cds_combined_8_SHARED_GENES_QC_filtered, alignment_group = "manuscript")
+cds_combined_8_SHARED_GENES_QC_filtered <- reduce_dimension(cds_combined_8_SHARED_GENES_QC_filtered)
+cds_combined_8_SHARED_GENES_QC_filtered <- cluster_cells(cds_combined_8_SHARED_GENES_QC_filtered, resolution=1e-5)
+cds_combined_8_SHARED_GENES_QC_filtered <- learn_graph(cds_combined_8_SHARED_GENES_QC_filtered)
+
+saveRDS(cds_combined_8_SHARED_GENES_QC_filtered,"cds_combined_8_SHARED_GENES_QC_filtered_harmonized_preprocessed_aligned_manuscript_UMAP_learn_graph(1).rds")
+
+#140,250 cells (after QC)
+#15,219 features
+
+```
+
+```{r}
+
+###atlas engineering, PDAC samples exclusively
+cds_T <- cds_combined_8_SHARED_GENES_QC[,colData(cds_combined_8_SHARED_GENES_QC)$TN == "T"]
+#112,752 cells
+#15,219 features
+
+```

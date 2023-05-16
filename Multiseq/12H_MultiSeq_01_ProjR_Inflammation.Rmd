@@ -1,0 +1,190 @@
+---
+title: "12H_MultiSeq_ProjR_Inflammation"
+author: "Joe"
+date: "1/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Load packages
+```{r}
+library(Seurat)
+library(monocle3)
+#library(SeuratWrappers)
+library(ggplot2)
+library(dplyr)
+library('ComplexHeatmap')
+library(forcats)
+library(knitr)
+library(scFunctions)
+```
+
+##Load Object and make celldataset
+```{r}
+##Load Data
+load("PDAC/Data/dgeData.rda")
+
+##Remove doublets
+dgeData <- dgeData[,!(dgeData$MULTIseqClassification %in% c("Doublet","Panc1","Negative"))]
+
+##Re-preprocess subsetdata
+dgeData_scaled <- ScaleData(dgeData)
+dgeData_scaled <- RunPCA(dgeData_scaled)
+dgeData_scaled <- FindNeighbors(dgeData_scaled, dims = 1:10)
+dgeData_scaled <- FindClusters(dgeData_scaled, resolution = 0.5)
+dgeData_scaled <- RunUMAP(dgeData_scaled, dims = 1:10)
+
+DimPlot(dgeData_scaled)
+DimPlot(dgeData_scaled, group.by = "MULTIseqClassification")
+
+##Save
+save(dgeData_scaled, file = "PDAC/Data/12HR_MultiSeq_BasicProc.rds")
+```
+
+##Assigning CAF and ORG to CC samples
+```{r}
+##Filter seurat object for Coculture samples only
+CC_seurat <- dgeData_scaled[,(dgeData_scaled$MULTIseqClassification %in% "CC1")]
+DimPlot(CC_seurat)
+FeaturePlot(CC_seurat, features = c("VIM","CDH1"))
+
+## Subset the Coculture exprs data to include only VIM and CDH1
+CCcountsDataFrame <- as.data.frame(as.matrix(CC_seurat@assays$RNA@counts))
+countsSubset <- t(CCcountsDataFrame[rownames(CCcountsDataFrame) %in% c("VIM", "CDH1"), ])
+
+## Classify by expression of VIM and CDH1 (VIM=CAF,CDH1=Organoid)
+classifiedCounts <- as.data.frame(countsSubset) %>%
+    mutate(classification = ifelse(VIM > 0 & CDH1 == 0, "CC_CAF",
+                                   ifelse(VIM == 0 & CDH1 > 0, "CC_Org",
+                                   "Unknown")))
+
+classifiedCounts_filtered <- as.data.frame(as.character(classifiedCounts$classification))
+colnames(classifiedCounts_filtered) <- "Class"
+classifiedCounts_filtered$barcode <- rownames(classifiedCounts)
+
+classifiedCounts_filtered <- classifiedCounts_filtered[(classifiedCounts_filtered$Class=="CC_CAF" | classifiedCounts_filtered$Class == "CC_Org"),]
+
+## Add the classification to the cds
+#Use the MultiSeqClassification column as the template, write over it -- that way any Monoculture are still labeled
+#Duplicate MULTIseqClassification column
+dgeData_scaled <- AddMetaData(dgeData_scaled, dgeData_scaled$MULTIseqClassification, col.name = "Classification")
+
+#Write in all the Co-culture annotations from above                              
+for (i in 1:971){
+  for (j in 1:160){
+  if (rownames(dgeData_scaled@meta.data)[i] == classifiedCounts_filtered$barcode[j]){
+    dgeData_scaled$Classification[i] <- classifiedCounts_filtered$Class[j]}
+  }
+}
+
+##Remove undetermined Co-culture cells (meaning they weren't identified as CAFs or Organoids)
+dgeData_scaled <- dgeData_scaled[,!dgeData_scaled$Classification == "CC1"]
+
+##Visualize Additions
+table(dgeData_scaled$Classification)
+DimPlot(dgeData_scaled, group.by = "MULTIseqClassification")
+DimPlot(dgeData_scaled, group.by = "Classification")
+
+#Save
+save(dgeData_scaled, file="PDAC/Data/dgeData_CAForgCC.rda")
+```
+
+##Prepare for ProjR
+```{r}
+##Create counts and coldata objects
+dgeData_scaled_counts <- dgeData_scaled@assays$RNA@scale.data
+dgeData_scaled_colData <- dgeData_scaled@meta.data
+
+##Load Atlas Patterns (from Jacob)  -- P3&4 = Cell Cycle, P7 = Inflammation
+Atlas_Epi_Patterns <- readRDS(file="PDAC/Data/epiMat-e74511f6-8a1d-4929-ab42-1cb67c5a4fb6-result-8pattern.rds")
+
+#Extract Feature Loadings for ProjR
+Atlas_Epi_FeatLoadings <- Atlas_Epi_Patterns@featureLoadings
+```
+
+##Running ProjectR
+```{r}
+AtlasPatterns_MultiSeqSCALED_Projection <- projectR(dgeData_scaled_counts,loadings=Atlas_Epi_FeatLoadings,full=TRUE)
+```
+
+##Create Visuals Metadata
+```{r}
+##Combine ProjectR Pattern7 Results with existing seurat metadata
+AtlasPatterns_MultiSeqSCALED_Projection_visuals <- cbind(dgeData_scaled_colData, t(AtlasPatterns_MultiSeqSCALED_Projection$projection)[,7])
+colnames(AtlasPatterns_MultiSeqSCALED_Projection_visuals)[10] <- "Pattern_7"
+```
+
+##Add AtlasPatterns_MultiSeqSCALED_Projection_visuals to seurat metadata
+```{r}
+dgeData_scaled@meta.data <- AtlasPatterns_MultiSeqSCALED_Projection_visuals
+
+##Save UMAP of Pattern7 Expression
+pdf(file="Figures/12HR_MultiSeq_OrgCAF_UMAP3.pdf")
+DimPlot(dgeData_scaled, group.by = "Classification")
+FeaturePlot(dgeData_scaled, features = "Pattern_7", label = F)
+dev.off()
+```
+
+##Create Violin Plot for ORG and CAF Population expression of Pattern7 w/ Wilcoxin test results
+```{r}
+##Create Violin Plots 
+ggplot(AtlasPatterns_MultiSeqSCALED_Projection_visuals, aes(x=Classification, y=Pattern_7)) + geom_violin()
+
+##Recreate and Save
+pdf(file="PDAC/Figures/AtlasPatterns_MultiSeqSCALED_Projection_visuals_CellTypeViolin3.pdf")
+ggplot(AtlasPatterns_MultiSeqSCALED_Projection_visuals, aes(x=Classification, y=Pattern_7)) + geom_violin() + theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+ stat_compare_means(comparisons= list(c("CC_CAF","CAF1"), c("CC_Org","Org1")), label.y.npc = 0.85, method = "wilcox.test")
+dev.off()
+```
+
+##Create Violin Plot for ORG Population expression of Pattern7 w/ Wilcoxin test results
+```{r}
+##Dataframe of Metadata specific or organoids
+AtlasPatterns_MultiSeqSCALED_Projection_visuals_ORG <- AtlasPatterns_MultiSeqSCALED_Projection_visuals[(AtlasPatterns_MultiSeqSCALED_Projection_visuals$Classification == "Org1" | AtlasPatterns_MultiSeqSCALED_Projection_visuals$Classification == "CC_Org"),]
+
+##Recreate and Save
+pdf(file="PDAC/Data/AtlasPatterns_MultiSeqSCALED_Projection_visuals_CellTypeViolin_ORGonly4.pdf")
+ggplot(AtlasPatterns_MultiSeqSCALED_Projection_visuals_ORG, aes(x=Classification, y=Pattern_7)) + geom_violin() + theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+ stat_compare_means(comparisons= list(c("CC_Org","Org1")), label.y.npc = 0.85, method = "wilcox.test")+theme_minimal()+ theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) + scale_x_discrete(limits=c("Org1","CC_Org"))+ylab("Atlas CoGAPS Pattern 7")+ggtitle("Atlas CoGAPS Pattern 7 Projection onto sc-RNA Untreated Organoid Samples")
+dev.off()
+
+```
+
+##Save Data and Plot Final Figures
+```{r}
+save(AtlasPatterns_MultiSeqSCALED_Projection_visuals_ORG,AtlasPatterns_MultiSeqSCALED_Projection_visuals,dgeData_scaled,file="PDAC/Data/12H_MultiSeq_ProjR_InflammationData.rda")
+
+##Save Figures (3 umaps and the org violin plot)
+pdf(file="PDAC/Figures/12H_MultiSeq_ProjR_Inflammation_Figs.pdf")
+DimPlot(dgeData_scaled)
+DimPlot(dgeData_scaled, group.by = "MULTIseqClassification")
+DimPlot(dgeData_scaled, group.by = "Classification")
+
+ggplot(AtlasPatterns_MultiSeqSCALED_Projection_visuals_ORG, aes(x=Classification, y=Pattern_7)) + geom_violin() + theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+ stat_compare_means(comparisons= list(c("CC_Org","Org1")), label.y.npc = 0.85, method = "wilcox.test")
+dev.off()
+```
+
+##Not sure if being used in Atlas
+#Violin plots contrasting the expression of HLA specific genes between the Mono and Co-culture organoids
+```{r}
+##Subset Seurat object for organoid populations (both monoculture and coculture)
+dgeData_scaled_org <- dgeData_scaled[,(dgeData_scaled$Classification %in% c("Org1","CC_Org"))]
+##verify subsetting
+table(dgeData_scaled_org@meta.data$Classification)
+
+#vector of HLA specific genes
+HLA_Genes <- c("HLA-F","HLA-F-AS1","HLA-G","HLA-A","HLA-E","HLA-C","HLA-B","HLA-DRA","HLA-DRB5","HLA-DRB1","HLA-DQA1","HLA-DQB1","HLA-DQB1-AS1","HLA-DQA2","HLA-DQB2","HLA-DOB","HLA-DMB","HLA-DMA","HLA-DOA","HLA-DPA1","HLA-DPB1")
+
+##Subset counts matrix to include only HLA genes
+dgeData_scaled_org_counts <- as.data.frame(dgeData_Orgsubset@assays$RNA@data[rownames(dgeData_Orgsubset@assays$RNA@counts) %in% HLA_Genes,])
+
+##Save Violin plots of these gene expressions w/ wilcox test between the mono and coculture populations
+pdf(file="PDAC/Figures/MultiSeq12HR_ORG_HLAGenes_Violin_wilcoxtest.pdf")
+for (i in 1:length(HLA_Genes)){
+x <- VlnPlot(dgeData_scaled_org, features = HLA_Genes[i], group.by = "Classification", y.max=(max(dgeData_scaled_org_counts[i,])+1)) 
+  print(x + stat_compare_means(comparisons= list(c("CC_Org","Org1")), label.y.npc = 0.85, method = "wilcox.test"))
+}
+dev.off()
+```
+
