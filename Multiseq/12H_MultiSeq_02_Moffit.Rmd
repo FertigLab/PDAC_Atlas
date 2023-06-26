@@ -175,7 +175,6 @@ caf_pct <- CAF_meta%>%
 
 ```
 
-
 ##Stacked Barplot for Org and CAF subtypes
 ```{r}
 pdf(file="PDAC/Figures/MultiSeq12H_BasalClass_iCAFmyCAF_stackedbarplots.pdf")
@@ -197,4 +196,29 @@ dev.off()
 VlnPlot(CAF_Clust, features = "ITGB1", group.by = "Classifier_CAF_Specific",y.max=7.5) + stat_compare_means(comparisons= list(c("CAF1_iCAF","CAF1_myCAF"),c("CC1_iCAF","CC1_myCAF"),c("CAF1_iCAF","CC1_myCAF"),c("CAF1_myCAF","CC1_myCAF"),c("CAF1_iCAF","CC1_iCAF"),c("CAF1_iCAF","CC1_myCAF")), label.y.npc = 0.85, method = "wilcox.test")
 ```
 
+##Boxplot of Pattern 7 split by mono and co org
+```{r}
+pdf("PDAC/Figures/Pattern7exprs_inORG_boxplots.pdf")
+ggplot(org_meta, aes(x=Classification, y=Pattern_7)) + geom_boxplot() + stat_compare_means(method = "wilcox") + ggtitle("Boxplots of Pattern_7 by Culture Condition")
+
+ggplot(org_meta, aes(x=Classifier_Epithelial, y=Pattern_7)) + geom_boxplot() + stat_compare_means(comparisons = list(c("Basal","Classical"), c("Basal","dual_negative"),c("Basal","dual_positive"),c("Classical","dual_negative"),c("Classical","dual_positive"), c("dual_negative","dual_positive")),method="wilcox") + ggtitle("Boxplots of Pattern_7 by Epithelial Subtype, all conditions")
+
+ggplot(org_meta, aes(x=Classifier_Epithelial, y=Pattern_7)) + geom_boxplot() + facet_wrap("Classification")  + stat_compare_means(comparisons = list(c("Basal","Classical"), c("Basal","dual_negative"),c("Basal","dual_positive"),c("Classical","dual_negative"),c("Classical","dual_positive"), c("dual_negative","dual_positive")),method="wilcox")+ ggtitle("Boxplots of Pattern_7 by Epithelial Subtype, split by condition")
+dev.off()
+```
+
+##Save final objects
+```{r}
+##Save Metadatas
+save(org_meta,CAF_meta,file="PDAC/Data/12H_MultiSeq_ProjR_Inflammation_ORG_CAF_Classifier_Metadata.rda")
+
+##Merge metas w/ seurat object
+dgeData_scaled@meta.data$Classifier_Epithelial <- rep(NA,nrow(dgeData_scaled@meta.data))
+dgeData_scaled@meta.data[rownames(org_meta),]$Classifier_Epithelial <- org_meta$Classifier_Epithelial
+
+dgeData_scaled@meta.data$Classifier_CAF <- rep(NA,nrow(dgeData_scaled@meta.data))
+dgeData_scaled@meta.data[rownames(CAF_meta),]$Classifier_CAF <- CAF_meta$Classifier_CAF
+
+save(dgeData_scaled, file="PDAC/Data/12H_MultiSeq_ProjR_Inflammation_ORG_CAF_Classifier_FinalSeurat.rda")
+```
 
